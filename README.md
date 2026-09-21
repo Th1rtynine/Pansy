@@ -93,7 +93,8 @@ cp config.example.toml config.toml       # macOS / Linux
 ### 运行
 
 ```bash
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000     # Windows
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000         # macOS / Linux
 ```
 
 界面在 `http://127.0.0.1:8000/`,接口文档在 `/docs`。首次启动会自动建表,空库即可使用,不需要执行迁移脚本。
