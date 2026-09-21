@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/src/assets/pansy-mark-v3.png" />
+    <title>Pansy</title>
+    <!--
+      首屏那一下的颜色。深色下若等 Vue 起来再上色,会先闪一下白,所以这里抢先跑一次:
+      看 localStorage 里存的选择,是深色(或跟随系统而系统是深色)就先把 dark 类挂上。
+      **逻辑的正文在 src/theme.ts,这里是它的一份极短副本** —— 改的时候两处一起改。
+    -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("pansy.theme");
+          var dark =
+            saved === "dark" ||
+            ((saved === "system" || !saved) &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+        } catch (e) {
+          /* 隐私模式下 localStorage 会抛错:那就按浅色走,不值得为此拦住页面 */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

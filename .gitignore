@@ -1,0 +1,13 @@
+data/
+config.toml
+# 迁移前的快照。data/ 里只放库本身(pansy.db 与 covers/),快照放这儿。
+backups/
+.venv/
+__pycache__/
+*.pyc
+
+# 前端:依赖与构建产物都不进仓库(装一次就有,构建一次就有)。
+# .npm-cache 是本机把 npm 的缓存指到工作目录里留下的,同样不进。
+frontend/node_modules/
+frontend/dist/
+.npm-cache/

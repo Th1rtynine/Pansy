@@ -1,0 +1,13 @@
+[paths]
+data_dir = "data"
+
+# 外部数据源。整段都可以不写 —— 不写就是「没有令牌、超时 10 秒、用默认的 User-Agent」。
+[sources]
+# Bangumi 的访问令牌(在 bgm.tv 自己的设置页里生成),填进来才有 R18 那一类条目。
+# **不申请也能用**:公开条目照样读得到,只是看不到那一类(不带令牌时它们回 404 而不是 403)。
+# VNDB 不需要令牌。
+bangumi_token = ""
+# 问外部源等多久算「它没答上来」(秒)。
+timeout = 10.0
+# 请求时对外报的名字:对方靠它认人(Bangumi 明确要求带)。fork 出去自己改这一行,不用改代码。
+user_agent = "Th1rtynine/Pansy (https://github.com/Th1rtynine/Pansy)"

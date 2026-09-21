@@ -1,0 +1,213 @@
+/*
+ * 第三层:翻译 + 底子上的统一。**这个文件是样式的唯一入口。**
+ *
+ * 前两行把前两层引进来:`palette.css` 放值,`semantic.css` 放用途。
+ *
+ * `@theme inline` 这一段是翻译层:声明一次 `--color-canvas`,就自动有了 `bg-canvas`、
+ * `text-canvas`、`border-canvas` 这些工具类,不需要 tailwind.config.js。`inline` 的意思是
+ * 「照着抄一份」:生成出来的类里写的是 `var(--pn-canvas)`,而不是把 #f6f5f2 复制进去 ——
+ * 所以改 semantic.css 立刻生效,将来加深色主题也只需要改中间那一层。
+ *
+ * 页面上写的 `bg-surface`、`text-muted`、`border-line` 全部来自下面这一段。
+ * **要加一个新颜色,顺序是:palette.css 里加值 → semantic.css 里起名字 → 这里翻译成类名。**
+ */
+@import "./palette.css";
+@import "./semantic.css";
+
+@theme inline {
+  /* 面 */
+  --color-canvas: var(--pn-canvas);
+  --color-surface: var(--pn-surface);
+  --color-subtle: var(--pn-subtle);
+  --color-inset: var(--pn-inset);
+  --color-scrim: var(--pn-scrim);
+
+  /* 字 */
+  --color-fg: var(--pn-fg);
+  --color-muted: var(--pn-muted);
+  --color-faint: var(--pn-faint);
+  --color-disabled: var(--pn-disabled);
+
+  /* 线 */
+  --color-line: var(--pn-line);
+  --color-line-strong: var(--pn-line-strong);
+
+  /* 主色与中性实心 */
+  --color-accent: var(--pn-accent);
+  --color-accent-hover: var(--pn-accent-hover);
+  --color-accent-press: var(--pn-accent-press);
+  --color-accent-on: var(--pn-accent-on);
+  --color-accent-text: var(--pn-accent-text);
+  --color-accent-soft: var(--pn-accent-soft);
+  --color-accent-soft-text: var(--pn-accent-soft-text);
+  /* 点缀色:整站只在「当前所在」那一处出现 */
+  --color-mark: var(--pn-mark);
+  --color-mark-text: var(--pn-mark-text);
+  --color-neutral-solid: var(--pn-neutral-solid);
+  --color-neutral-solid-on: var(--pn-neutral-solid-on);
+
+  /* 语义色:四个,各带底上的字、浅底、正文字色 */
+  --color-danger: var(--pn-danger);
+  --color-danger-on: var(--pn-danger-on);
+  --color-danger-soft: var(--pn-danger-soft);
+  --color-danger-text: var(--pn-danger-text);
+  --color-success: var(--pn-success);
+  --color-success-on: var(--pn-success-on);
+  --color-success-soft: var(--pn-success-soft);
+  --color-success-text: var(--pn-success-text);
+  --color-warning: var(--pn-warning);
+  --color-warning-on: var(--pn-warning-on);
+  --color-warning-soft: var(--pn-warning-soft);
+  --color-warning-text: var(--pn-warning-text);
+  --color-info: var(--pn-info);
+  --color-info-on: var(--pn-info-on);
+  --color-info-soft: var(--pn-info-soft);
+  --color-info-text: var(--pn-info-text);
+
+  /* 悬停与按压叠的那一层。值是分开的两条:强度在 semantic.css 里,深色下会翻成白的 */
+  --color-state-hover: var(--pn-state-hover);
+  --color-state-press: var(--pn-state-press);
+}
+
+/*
+ * 字体、字号、圆角:值暂时还写在这里,因为它们的「用途」还没起名字。等做到排版那一站,
+ * 字号与行高会成对搬到 semantic.css;做到布局那一站,圆角与间距也搬过去。
+ */
+@theme {
+  /*
+   * 动效:把两档时长与那条缓动**接到 Tailwind 的 transition 上**。这两行是这一站最省事的
+   * 地方 —— 全站每一处 `transition-colors` / `transition-transform` 从此用的就是这套时间感,
+   * 组件里不必再写 `duration-200`(写了反而多一处要改的地方)。
+   *
+   * 要单独换一档:用 `duration-(--pn-duration-base)`。另外还挂着 `ease-standard` 这个工具类,
+   * 用来写一条与默认不同的缓动 —— 它和别的工具类一样**按用到的才生成**,现在没人用,所以
+   * 产物里还看不到它。
+   */
+  --default-transition-duration: var(--pn-duration-fast);
+  --default-transition-timing-function: var(--pn-ease-standard);
+  --ease-standard: var(--pn-ease-standard);
+
+  /*
+   * 字体:先挑系统里有的中文字,再退到通用族。不下载字体文件,所以没有等待。
+   *
+   * **Noto Sans SC 放在最前**(2026-09-19):这台机器上装了它(还有 Noto Sans JP 与
+   * Noto Serif SC),它比微软雅黑笔画更均匀、字形更收,标题一眼就看得出来;装在系统里,
+   * 所以是零成本 —— 不用下载、不会先闪一下别的字形。没有它的机器上会自然落到微软雅黑。
+   * 后面那两枚是给**日文原名**兜底的:SC 缺的字(部分假名组合与日文专用字形)由 JP 接上。
+   */
+  --font-sans:
+    "Noto Sans SC", "Noto Sans JP", "Segoe UI", "Microsoft YaHei", "PingFang SC",
+    "Hiragino Sans GB", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+
+  /*
+   * 站名那一枚走花体(见 App.vue 的站名)。**只有它用这一族,别处一律黑体。**
+   *
+   * 第一顺位是 Gabriola:Windows 自带的书法体,笔画连带、字面收,写上 Pansy 像落款;
+   * 后面几枚是同一路的兜底(铜版体、圆珠笔体、手写体),都没有时退回 `cursive`。
+   * **站名只有五个拉丁字母,所以这里不存在中文字体那件麻烦事**(子集化、十几兆)—— 
+   * 用的又都是系统里装着的,打开就有,不下载。
+   */
+  --font-brand: "Gabriola", "French Script MT", "Freestyle Script", "Segoe Script", cursive;
+
+  /* 字号:六级,每级带自己的行高。中文行高要比字号大得多才不挤 */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.55rem;
+  --text-lg: 1.0625rem;
+  --text-lg--line-height: 1.7rem;
+  --text-xl: 1.3125rem;
+  --text-xl--line-height: 1.9rem;
+  --text-2xl: 1.625rem;
+  --text-2xl--line-height: 2.2rem;
+
+  /* 圆角:界面上一共只用这三级。
+     `pill`(两头全圆)是 2026-09-19 加的,现在用在两处小东西上:**顶栏那五个条目各自的
+     悬停底**与**搜索面板里一格一格的词**。容器不再用它 —— 顶栏是一张 card 圆角的长卡片,
+     搜索框是 control 圆角。 */
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-pill: 999px;
+}
+
+/*
+ * 底子上的一点点统一。只写那种「每个页面都要一样、写在页面里一定会漏」的东西:
+ * 正文颜色与字体、聚焦时的外圈、选中文字的颜色。
+ *
+ * **聚焦外圈**是这里最要紧的一条:用键盘 Tab 走过去时必须看得出在哪儿,而按钮与
+ * 输入框各自设一遍一定会漏掉几个 —— 所以放在这里一次。它的颜色、宽度、偏移都来自
+ * semantic.css,不写死在这里。
+ */
+@layer base {
+  html {
+    /* 原生控件(滚动条、下拉、日期框、复选框)跟着主题走 ——
+       少这一句,深色下它们仍然是白的 */
+    color-scheme: light;
+    font-family: var(--font-sans);
+    background-color: var(--pn-canvas);
+    color: var(--pn-fg);
+    /* 中文与数字混排时,标点不出现在行首 */
+    line-break: strict;
+    /*
+     * **把滚动条的位置永久留着。** 页面短到不出滚动条、与长到出滚动条时,**布局宽会差
+     * 一条滚动条(约 15px)**,于是整页(连固定在右边的浮动按钮)横着挪一下。
+     * 平时看不出来,但**站内跳转的那一瞬间页面是空的**(路由组件按需加载,内容还没到)、
+     * 滚动条会消失一下再回来 —— 那一进一出就是项目所有人 2026-09-20 报的「切换时后退按键
+     * 会抖动」(实测按钮右边缘在 30 毫秒里 1249 → 1264 → 1249)。
+     * `stable` 让它**有没有滚动条都占着那块地方**,宽度就不变了。它只留位置、不画滚动条,
+     * 所以短页面上看不出多了一条。
+     */
+    scrollbar-gutter: stable;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    margin: 0;
+  }
+
+  ::selection {
+    background-color: var(--pn-accent-soft);
+  }
+
+  :focus-visible {
+    outline: var(--pn-focus-ring-width) solid var(--pn-focus-ring);
+    outline-offset: var(--pn-focus-ring-offset);
+  }
+
+  /* 链接:正文里的链接统一这个颜色;具体控件里的链接由组件自己管 */
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /*
+   * 系统开了「减少动效」时:**过渡与动画一律停掉**。停掉的做法是把它压到 0.01ms 而不是
+   * 删掉 —— 删掉会让 `transitionend` 之类的事件永远不来,而压到几乎为零仍然会触发。
+   *
+   * **只有转圈的加载指示留着**,它是「正在忙」的唯一信号;停掉之后看起来就像卡住了,
+   * 所以那一个不压,改成转得慢一些。
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+
+    .animate-spin {
+      animation-duration: 2.4s !important;
+      animation-iteration-count: infinite !important;
+    }
+  }
+}

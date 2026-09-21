@@ -1,0 +1,202 @@
+/*
+ * 第二层:用途。**这一层才回答「这个颜色是干什么的」。**
+ *
+ * 每条都写成「角色 = 某个原始色」:左边是页面与组件里用的名字,右边是 palette.css 里的
+ * 值。所以想换配色,多数时候改的是右边这一句,而不是去翻十几个页面。
+ *
+ * 命名有三条:
+ * - `-on`:压在实心底上的**字**的颜色。**它不一定是白的** —— 深色主题下实心底偏亮,
+ *   必须配深字,所以它单独有一条,不写死。
+ * - `-soft`:这个颜色的**浅底**,给选中项、提示条用。
+ * - `-text`:它当**正文颜色**时的版本(浅底上要更深、深底上要更亮,才压得住)。
+ *
+ * 注意:面不是「第几层」,是「这是什么面」—— canvas 是整页底,surface 是内容面,
+ * subtle 是轻分区,inset 是凹进去的地方。这四个不按亮度排序,也不许拿它们堆层次。
+ *
+ * **深色主题在这一层只做一件事:把每个用途重新指一遍**(下面 `.dark` 那一段)。
+ * 页面与组件一个类名都不用改 —— 这就是值/用途/类名拆三层换来的东西。
+ * 深色不是把浅色反过来:实心底变亮、底上的字跟着变深,`-text` 也要重新挑。
+ */
+:root {
+  /* 面 */
+  --pn-canvas: var(--pn-sand-50);
+  --pn-surface: var(--pn-sand-0);
+  --pn-subtle: var(--pn-sand-100);
+  --pn-inset: var(--pn-sand-150);
+  --pn-scrim: rgb(0 0 0 / 0.32); /* 浮层背后的遮罩。和面的颜色分开控制,不要拿它当一种面 */
+
+  /* 字:三级 + 禁用。层级靠浓度分,不靠字号 */
+  --pn-fg: var(--pn-sand-900);
+  --pn-muted: var(--pn-sand-600);
+  --pn-faint: var(--pn-sand-500);
+  --pn-disabled: var(--pn-sand-400);
+
+  /* 线 */
+  --pn-line: var(--pn-sand-200);
+  --pn-line-strong: var(--pn-sand-300);
+
+  /* 主色 */
+  --pn-accent: var(--pn-brand-500);
+  --pn-accent-hover: var(--pn-brand-550);
+  --pn-accent-press: var(--pn-brand-650);
+  --pn-accent-on: var(--pn-white);
+  --pn-accent-text: var(--pn-brand-600);
+  --pn-accent-soft: var(--pn-brand-100);
+  /* 压在 accent 浅底上的字。**它与 `-text` 分开,是因为两层底与两种用途都不是一回事**:
+     `-text` 是「压在内容面上」的版本(正文里的链接用它),这个是「压在一块 accent 浅底上」
+     的版本。**浅色下取正文色(近黑),不取 accent 的深紫** —— 同一个色系的深紫字压在淡紫底上
+     看着发闷:对比度算出来是够的(6.6:1),但两个颜色太近,眼睛觉得糊。项目所有人 2026-09-20
+     的原话是「底色太重、字显得特别不清晰」,他要的是黑字。 */
+  --pn-accent-soft-text: var(--pn-fg);
+
+  /* 当前导航使用低饱和的叶绿色;花心的暖金只留在 Logo 那张图里,不再单开一个用途。
+     `-text` 是它当正文颜色时的版本 —— 与 accent 同一条规矩(见本文件上面那三条命名):
+     浅底上要更深才压得住,所以浅色主题用 700 档(5.91:1),深色主题沿用 300 档(8.44:1)。 */
+  --pn-mark: var(--pn-leaf-500);
+  --pn-mark-text: var(--pn-leaf-700);
+
+  /* 中性实心:次要按钮与标签 */
+  --pn-neutral-solid: var(--pn-sand-800);
+  --pn-neutral-solid-on: var(--pn-white);
+
+  /* 焦点圈单独一条,不跟着主色走。两个理由:它压在别的颜色之上,深色主题下常常需要
+     和主色不是同一个值;而且它除了颜色还有宽度和偏移两件事要定。 */
+  --pn-focus-ring: var(--pn-brand-500);
+  --pn-focus-ring-width: 2px;
+  --pn-focus-ring-offset: 2px;
+
+  /* 普通控件不再叠黑色:一层极淡藤紫会保留暖白底的干净感。实心主按钮使用上面的
+     accent-hover / accent-press,链接与其他语义按钮才使用轻微透明度变化。 */
+  --pn-state-hover: color-mix(in oklab, var(--pn-brand-500) 9%, transparent);
+  --pn-state-press: color-mix(in oklab, var(--pn-brand-500) 15%, transparent);
+  --pn-fade-hover-opacity: 0.92;
+  --pn-fade-press-opacity: 0.84;
+
+  /* 壳子宽度:正文那一列有多宽(见 Container.vue 的 shell 与右下角那两枚浮动按钮 ——
+     几处都读这一个值,所以改宽度只改这一行)。
+     **63.75rem = 1020px**(2026-09-20 由项目所有人定,这是他第三次改)。四段:
+     72rem(照参照站的正文列,`--container-6xl`)→ 60rem(他说「展示界面有点过宽」)
+     → 67.5rem(他在截图上画了一条线,说「让边框到我画的位置上,两端要对成」)
+     → 63.75rem(他说「改为上次改动和现在之间的位置,取中间」)。
+
+     **中间这一档怎么来的**:左边缘随列宽线性走(`(排版宽度 − 列宽) / 2`),
+     所以「取中间」就是两个宽度的中值 —— `(60 + 67.5) / 2 = 63.75rem`。换成他那个
+     窗口上的数:60rem 时左边缘在 301.25、67.5rem 时在 241.25,中点是 **271.25**
+     (设备 x=450),而他那条线的中心在 401 —— 也就是比线靠右 49 设备像素(30.6 CSS)。
+     这正是他要的:线那一次偏外,收回两次之间。
+
+     **67.5 那一档当初是量出来的,不是挑的**:他的截图是 2560×1600、系统缩放 160%,
+     所以 1 CSS px = 1.6 设备像素;那张图里页面左边缘在设备 x=16、右边滚动条 15px 宽,
+     于是排版宽度 = 1562.5 CSS px。他画的那条线(宽约 6 CSS px)中心落在设备 x=401,
+     也就是离页面左边缘 **240.6**;当时正文列左边缘在 301.25(设备 498,和标题
+     「全部作品」的左边缘只差 3 设备像素 —— 列表行没有内缩,分隔线就是整列宽)。
+     要让左边缘落在 240.6,列宽得是 `1562.5 − 2×240.6 ≈ 1081` → 取 67.5rem,
+     左边缘落在 241.25,离线中心 0.65px。(68rem 会到 237.25,比线中心还靠左 3px;
+     67rem 到 245.25,靠右 4.65px。)
+
+     **顶栏对正文的比例不必记**(60rem 是 2:3、67.5rem 是 4:3,63.75rem 已经不是整数比)。
+     真正要紧的还是**顶栏比正文宽**:站名、五个条目、搜索与外观按钮要待在同一行里。
+
+     **知道它不保证一直对齐**:顶栏是另一个容器(90rem),两者只在某些窗口宽度下才对得上
+     (1280px 时正文列左边缘 152 正是「主页」那一条的左边缘;1500px 时「主页」在 170,
+     要 71.6rem 才对齐 —— 那正是 72rem 看着「正好」的原因)。要的是「列宽合适、两边对称」,
+     对齐只是量它时用的那把尺子。 */
+  --pn-shell-width: 63.75rem;
+  --pn-header-width: 90rem;
+  --pn-header-shadow: 0 10px 30px rgb(60 45 66 / 0.09);
+
+  /* 动效:两档时长、一条缓动。**它们不进 palette** —— 动效没有「原始色」那样一层可以复用
+     的裸值,它本身就是用途。两个默认值在 tokens.css 里接到 Tailwind 的 transition 上,
+     所以组件里写 transition-colors / transition-transform 用的就已经是这套时间感。 */
+  --pn-duration-fast: 120ms; /* 悬停、按压这类要立刻看到的反馈 */
+  --pn-duration-base: 200ms; /* 浮层进出、面积较大的变化 */
+  --pn-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1); /* 先快后慢:进场、淡入、回位 */
+
+  /* 浮层顺序:只有两档。浮层只许用这两个值,不许在页面里随手写 z-50 去压别人 */
+  --pn-z-overlay: 100;
+  --pn-z-toast: 110;
+
+  /* 语义色:这四个不经过色阶。它们表达的是「意思」而不是「某个色系」,所以没有中间档,
+     每个配齐四件:实心底、底上的字、浅底、当正文用的那个色。 */
+  --pn-danger: #a63a30;
+  --pn-danger-on: var(--pn-white);
+  --pn-danger-soft: #f6e8e6;
+  --pn-danger-text: #8c2f27;
+
+  --pn-success: #3d6b45;
+  --pn-success-on: var(--pn-white);
+  --pn-success-soft: #e7efe8;
+  --pn-success-text: #345a3b;
+
+  --pn-warning: #8a6417;
+  --pn-warning-on: var(--pn-white);
+  --pn-warning-soft: #f6efdd;
+  --pn-warning-text: #775514;
+
+  --pn-info: #38607f;
+  --pn-info-on: var(--pn-white);
+  --pn-info-soft: #e6eef4;
+  --pn-info-text: #2f5470;
+}
+
+/*
+ * 深色。挂这一个类在 `<html>` 上就整套换过去(见 src/theme.ts):
+ * 浅色、深色、跟随系统三个选择,页面上没有任何一处写 `dark:`。
+ */
+.dark {
+  --pn-canvas: var(--pn-ink-950);
+  --pn-surface: var(--pn-ink-900);
+  --pn-subtle: var(--pn-ink-850);
+  --pn-inset: var(--pn-ink-800);
+  --pn-scrim: rgb(0 0 0 / 0.6); /* 深色下遮罩要比浅色更黑,否则压不住底下的内容 */
+
+  --pn-fg: var(--pn-ink-100);
+  --pn-muted: var(--pn-ink-400);
+  --pn-faint: var(--pn-ink-500);
+  --pn-disabled: var(--pn-ink-600);
+
+  --pn-line: rgb(255 255 255 / 0.1); /* 深色下画不出「更深的线」,只能画「更亮的线」 */
+  --pn-line-strong: rgb(255 255 255 / 0.18);
+
+  --pn-accent: var(--pn-brand-400);
+  --pn-accent-hover: var(--pn-brand-350);
+  --pn-accent-press: var(--pn-brand-450);
+  --pn-accent-on: #241a2a; /* 底变亮了,压在上面的字就要变深 —— 这条最容易抄漏 */
+  --pn-accent-text: var(--pn-brand-300);
+  --pn-accent-soft: color-mix(in oklab, var(--pn-brand-400) 22%, var(--pn-surface));
+  /* 深色下浅底那一块本身是**暗的**(accent 22% 兑进 surface),压在它上面的字要用白的 ——
+     与 neutral 的软底一直用 `text-fg`(深色下是近白)是同一个道理。项目所有人要的也是白字。 */
+  --pn-accent-soft-text: var(--pn-white);
+
+  --pn-mark: var(--pn-leaf-300);
+  --pn-mark-text: var(--pn-leaf-300);
+
+  --pn-neutral-solid: var(--pn-ink-100);
+  --pn-neutral-solid-on: var(--pn-ink-950);
+
+  --pn-focus-ring: var(--pn-brand-400);
+
+  --pn-state-hover: color-mix(in oklab, var(--pn-brand-300) 13%, transparent);
+  --pn-state-press: color-mix(in oklab, var(--pn-brand-300) 20%, transparent);
+  --pn-header-shadow: 0 12px 32px rgb(0 0 0 / 0.3);
+
+  --pn-danger: #e5645a;
+  --pn-danger-on: #1a0d0b;
+  --pn-danger-soft: color-mix(in oklab, var(--pn-danger) 22%, var(--pn-surface));
+  --pn-danger-text: #f0938a;
+
+  --pn-success: #5fb873;
+  --pn-success-on: #0b1a0f;
+  --pn-success-soft: color-mix(in oklab, var(--pn-success) 22%, var(--pn-surface));
+  --pn-success-text: #86d296;
+
+  --pn-warning: var(--pn-petal-400);
+  --pn-warning-on: #1a1206;
+  --pn-warning-soft: color-mix(in oklab, var(--pn-warning) 22%, var(--pn-surface));
+  --pn-warning-text: var(--pn-petal-300);
+
+  --pn-info: #6ba3d6;
+  --pn-info-on: #0a1520;
+  --pn-info-soft: color-mix(in oklab, var(--pn-info) 22%, var(--pn-surface));
+  --pn-info-text: #92bde6;
+}
