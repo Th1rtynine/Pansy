@@ -20,7 +20,7 @@ withDefaults(defineProps<{ title?: string; rows: { label: string; value: string 
         <dt class="w-20 shrink-0 text-right">
           <Text size="sm" tone="faint">{{ row.label }}</Text>
         </dt>
-        <dd class="min-w-0 flex-1">
+        <dd class="min-w-0 flex-1 break-all">
           <Text size="sm">{{ row.value }}</Text>
         </dd>
       </div>

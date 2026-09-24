@@ -1,0 +1,2019 @@
+{
+  "entries": {
+    "181467": {
+      "entry": {
+        "collection": {
+          "collect": 285,
+          "doing": 85,
+          "dropped": 13,
+          "on_hold": 21,
+          "wish": 132
+        },
+        "date": "2016-12-22",
+        "eps": 18,
+        "id": 181467,
+        "images": {
+          "common": "https://lain.bgm.tv/r/400/pic/cover/l/0e/90/181467_8Vc1w.jpg",
+          "grid": "https://lain.bgm.tv/r/100/pic/cover/l/0e/90/181467_8Vc1w.jpg",
+          "large": "https://lain.bgm.tv/pic/cover/l/0e/90/181467_8Vc1w.jpg",
+          "medium": "https://lain.bgm.tv/r/800/pic/cover/l/0e/90/181467_8Vc1w.jpg",
+          "small": "https://lain.bgm.tv/r/200/pic/cover/l/0e/90/181467_8Vc1w.jpg"
+        },
+        "infobox": [
+          {
+            "key": "中文名",
+            "value": "安达与岛村"
+          },
+          {
+            "key": "原作",
+            "value": "入間人間"
+          },
+          {
+            "key": "作画",
+            "value": "まに"
+          },
+          {
+            "key": "出版社",
+            "value": "スクウェア・エニックス"
+          },
+          {
+            "key": "连载杂志",
+            "value": "ガンガンONLINE"
+          },
+          {
+            "key": "发售日",
+            "value": "2016-12-22"
+          },
+          {
+            "key": "册数",
+            "value": "3"
+          },
+          {
+            "key": "话数",
+            "value": "18"
+          },
+          {
+            "key": "开始",
+            "value": "2016-04-04"
+          },
+          {
+            "key": "结束",
+            "value": "2017-09-04"
+          }
+        ],
+        "locked": false,
+        "meta_tags": [],
+        "name": "安達としまむら",
+        "name_cn": "安达与岛村",
+        "nsfw": false,
+        "platform": "漫画",
+        "rating": {
+          "count": {
+            "1": 0,
+            "10": 13,
+            "2": 1,
+            "3": 1,
+            "4": 2,
+            "5": 7,
+            "6": 19,
+            "7": 73,
+            "8": 58,
+            "9": 13
+          },
+          "rank": 2985,
+          "score": 7.4,
+          "total": 187
+        },
+        "series": true,
+        "summary": "安達としまむらは高校一年生。入学してから、どちらもそれなりにふまじめ。旧来の友人じゃなくて、高校に入ってからの比較的浅い仲。お互いに知っていることはそこそこで、知らないことは山ほどある。体育館の二階で授業をサボりながら二人で過ごす日常。その関係が、少しだけ変わっていく──。電撃文庫の大人気ライトノベルをコミカライズ!",
+        "tags": [
+          {
+            "count": 92,
+            "name": "百合",
+            "total_count": 69186
+          },
+          {
+            "count": 60,
+            "name": "漫画",
+            "total_count": 399622
+          },
+          {
+            "count": 31,
+            "name": "入間人間",
+            "total_count": 3273
+          },
+          {
+            "count": 25,
+            "name": "小说改",
+            "total_count": 17545
+          },
+          {
+            "count": 21,
+            "name": "校园",
+            "total_count": 39354
+          },
+          {
+            "count": 20,
+            "name": "安达与岛村",
+            "total_count": 528
+          },
+          {
+            "count": 14,
+            "name": "恋爱",
+            "total_count": 74302
+          },
+          {
+            "count": 13,
+            "name": "まに",
+            "total_count": 13
+          },
+          {
+            "count": 12,
+            "name": "轻改",
+            "total_count": 3410
+          },
+          {
+            "count": 12,
+            "name": "2016",
+            "total_count": 4582
+          },
+          {
+            "count": 10,
+            "name": "入间人间",
+            "total_count": 3389
+          },
+          {
+            "count": 7,
+            "name": "轻小说改",
+            "total_count": 4903
+          },
+          {
+            "count": 5,
+            "name": "日常",
+            "total_count": 20806
+          },
+          {
+            "count": 4,
+            "name": "安達としまむら",
+            "total_count": 53
+          },
+          {
+            "count": 3,
+            "name": "已完结",
+            "total_count": 57812
+          },
+          {
+            "count": 3,
+            "name": "腰斩",
+            "total_count": 1486
+          },
+          {
+            "count": 2,
+            "name": "Gangan_Online",
+            "total_count": 7
+          },
+          {
+            "count": 1,
+            "name": "日本",
+            "total_count": 50326
+          },
+          {
+            "count": 1,
+            "name": "SquareEnix",
+            "total_count": 175
+          },
+          {
+            "count": 1,
+            "name": "轻小说",
+            "total_count": 136622
+          },
+          {
+            "count": 1,
+            "name": "ガンガンONLINE",
+            "total_count": 120
+          },
+          {
+            "count": 1,
+            "name": "Yuri",
+            "total_count": 113
+          },
+          {
+            "count": 1,
+            "name": "2005",
+            "total_count": 1114
+          },
+          {
+            "count": 1,
+            "name": "轻百",
+            "total_count": 178
+          },
+          {
+            "count": 1,
+            "name": "Square_Enix",
+            "total_count": 33
+          },
+          {
+            "count": 1,
+            "name": "3卷",
+            "total_count": 105
+          },
+          {
+            "count": 1,
+            "name": "漫画系列",
+            "total_count": 29983
+          },
+          {
+            "count": 1,
+            "name": "细腻",
+            "total_count": 417
+          },
+          {
+            "count": 1,
+            "name": "マンガ",
+            "total_count": 2987
+          },
+          {
+            "count": 1,
+            "name": "2024",
+            "total_count": 2899
+          }
+        ],
+        "total_episodes": 0,
+        "type": 1,
+        "volumes": 3
+      },
+      "identity": {
+        "external_id": "81467",
+        "relations": [
+          "书籍"
+        ],
+        "title": "安达与岛村"
+      },
+      "relations": [
+        {
+          "id": 81467,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/b2/48/81467_7WnB2.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/b2/48/81467_7WnB2.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/b2/48/81467_7WnB2.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/b2/48/81467_7WnB2.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/b2/48/81467_7WnB2.jpg"
+          },
+          "name": "安達としまむら",
+          "name_cn": "安达与岛村",
+          "relation": "书籍",
+          "type": 1
+        },
+        {
+          "id": 283417,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/a9/83/283417_gNmsf.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/a9/83/283417_gNmsf.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/a9/83/283417_gNmsf.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/a9/83/283417_gNmsf.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/a9/83/283417_gNmsf.jpg"
+          },
+          "name": "安達としまむら",
+          "name_cn": "安达与岛村",
+          "relation": "不同版本",
+          "type": 1
+        },
+        {
+          "id": 198460,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/24/81/198460_zHMV5.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/24/81/198460_zHMV5.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/24/81/198460_zHMV5.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/24/81/198460_zHMV5.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/24/81/198460_zHMV5.jpg"
+          },
+          "name": "安達としまむら(1)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 214963,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/07/37/214963_pLPz7.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/07/37/214963_pLPz7.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/07/37/214963_pLPz7.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/07/37/214963_pLPz7.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/07/37/214963_pLPz7.jpg"
+          },
+          "name": "安達としまむら(2)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 229876,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/89/2b/229876_6yQc4.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/89/2b/229876_6yQc4.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/89/2b/229876_6yQc4.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/89/2b/229876_6yQc4.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/89/2b/229876_6yQc4.jpg"
+          },
+          "name": "安達としまむら (3)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        }
+      ],
+      "volumes": [
+        {
+          "external_id": "198460",
+          "number": 1.0,
+          "published_on": "2016-12-22",
+          "title": "安達としまむら(1)"
+        },
+        {
+          "external_id": "214963",
+          "number": 2.0,
+          "published_on": "2017-06-09",
+          "title": "安達としまむら(2)"
+        },
+        {
+          "external_id": "229876",
+          "number": 3.0,
+          "published_on": "2017-12-22",
+          "title": "安達としまむら (3)"
+        }
+      ]
+    },
+    "282372": {
+      "entry": {
+        "collection": {
+          "collect": 11610,
+          "doing": 1582,
+          "dropped": 442,
+          "on_hold": 1167,
+          "wish": 4461
+        },
+        "date": "2020-10-08",
+        "eps": 12,
+        "id": 282372,
+        "images": {
+          "common": "https://lain.bgm.tv/r/400/pic/cover/l/0f/a4/282372_pqp0S.jpg",
+          "grid": "https://lain.bgm.tv/r/100/pic/cover/l/0f/a4/282372_pqp0S.jpg",
+          "large": "https://lain.bgm.tv/pic/cover/l/0f/a4/282372_pqp0S.jpg",
+          "medium": "https://lain.bgm.tv/r/800/pic/cover/l/0f/a4/282372_pqp0S.jpg",
+          "small": "https://lain.bgm.tv/r/200/pic/cover/l/0f/a4/282372_pqp0S.jpg"
+        },
+        "infobox": [
+          {
+            "key": "中文名",
+            "value": "安达与岛村"
+          },
+          {
+            "key": "别名",
+            "value": [
+              {
+                "v": "Adachi and Shimamura"
+              },
+              {
+                "v": "Adachi to Shimamura"
+              },
+              {
+                "v": "樱与抱月"
+              }
+            ]
+          },
+          {
+            "key": "话数",
+            "value": "12"
+          },
+          {
+            "key": "放送开始",
+            "value": "2020年10月8日"
+          },
+          {
+            "key": "放送星期",
+            "value": "星期四"
+          },
+          {
+            "key": "官方网站",
+            "value": "https://www.tbs.co.jp/anime/adashima/"
+          },
+          {
+            "key": "播放电视台",
+            "value": "TBS"
+          },
+          {
+            "key": "播放结束",
+            "value": "2020年12月24日"
+          },
+          {
+            "key": "导演",
+            "value": "桑原智"
+          },
+          {
+            "key": "音乐",
+            "value": "櫻井美希、田渕夏海、中村巴奈重"
+          },
+          {
+            "key": "Copyright",
+            "value": "©2019 入間人間/KADOKAWA/安達としまむら製作委員会"
+          },
+          {
+            "key": "原作",
+            "value": "入間人間（電擊文庫 刊）"
+          },
+          {
+            "key": "人物设定",
+            "value": "金子志津枝"
+          },
+          {
+            "key": "主题歌演出",
+            "value": "安達としまむら(CV:鬼頭明里と伊藤美来)"
+          },
+          {
+            "key": "总作画监督",
+            "value": "米本奈苗、薄谷栄之、中村深雪、豊田暁子、神谷美也子、氏家章雄、森田莉奈"
+          },
+          {
+            "key": "製作",
+            "value": "安達としまむら製作委員会(TBS、ポニーキャニオン、KADOKAWA、BS11[日本BS放送]、Ray[レイ]、東京ナレーション演技研究所[日本ナレーション演技研究所]、日音)"
+          },
+          {
+            "key": "企画",
+            "value": "十二竜也、古川陽子、徳田直巳、田﨑勝也、吉川雅子、橋本崇宏、渡邊知明"
+          },
+          {
+            "key": "制片人",
+            "value": "田中潤一朗、阿南浩志、中沢莉奈、大和田智之、中目孝昭、吉川敦史"
+          },
+          {
+            "key": "动画制片人",
+            "value": "宇田川純男"
+          },
+          {
+            "key": "脚本",
+            "value": "森田眞由美、大知慶一郎"
+          },
+          {
+            "key": "分镜",
+            "value": "吉村文宏、桑原智"
+          },
+          {
+            "key": "演出",
+            "value": "山内東生雄、波多正美、川西泰二、山本隆太、鈴木卓夫、前園文夫、吉村文宏、岩本保雄、矢花馨"
+          },
+          {
+            "key": "人物原案",
+            "value": "のん"
+          },
+          {
+            "key": "系列构成",
+            "value": "大知慶一郎"
+          },
+          {
+            "key": "美术监督",
+            "value": "斉藤雅己"
+          },
+          {
+            "key": "色彩设计",
+            "value": "油谷ゆみ"
+          },
+          {
+            "key": "摄影监督",
+            "value": "志村豪"
+          },
+          {
+            "key": "道具设计",
+            "value": "川石テツヤ、加来哲郎、森田莉奈"
+          },
+          {
+            "key": "色彩指定",
+            "value": "島方亜矢子"
+          },
+          {
+            "key": "剪辑",
+            "value": "内田渉"
+          },
+          {
+            "key": "主题歌编曲",
+            "value": "伊藤翼"
+          },
+          {
+            "key": "主题歌作曲",
+            "value": "伊藤翼"
+          },
+          {
+            "key": "主题歌作词",
+            "value": "こだまさおり"
+          },
+          {
+            "key": "音响监督",
+            "value": "本山哲"
+          },
+          {
+            "key": "音效",
+            "value": "八十正太"
+          },
+          {
+            "key": "特效",
+            "value": "川西美保"
+          },
+          {
+            "key": "制作进行",
+            "value": "松島未恵"
+          },
+          {
+            "key": "音乐制作",
+            "value": "日音"
+          },
+          {
+            "key": "动画制作",
+            "value": "手塚プロダクション"
+          }
+        ],
+        "locked": false,
+        "meta_tags": [
+          "百合",
+          "校园",
+          "TV",
+          "恋爱",
+          "日本",
+          "GL",
+          "日常",
+          "小说改"
+        ],
+        "name": "安達としまむら",
+        "name_cn": "安达与岛村",
+        "nsfw": false,
+        "platform": "TV",
+        "rating": {
+          "count": {
+            "1": 5,
+            "10": 360,
+            "2": 10,
+            "3": 21,
+            "4": 60,
+            "5": 284,
+            "6": 1059,
+            "7": 2718,
+            "8": 2315,
+            "9": 503
+          },
+          "rank": 1337,
+          "score": 7.3,
+          "total": 7335
+        },
+        "series": false,
+        "summary": "我和安达是在体育馆的二楼偶然认识的逃课伙伴。\r\n偶尔一起打打乒乓这种程度的关系，\r\n对于基本上把与人交往视作麻烦的我来说，\r\n是刚好合适的距离。\r\n但是，最近安达的样子有点奇怪。\r\n就好比，明明是只对人没有兴趣的猫咪，\r\n变得越来越像条狗狗一样的感觉。\r\n我有对安达做了什么么……\r\n\r\n——这样的两人的关系稍许开始改变的故事。",
+        "tags": [
+          {
+            "count": 3146,
+            "name": "百合",
+            "total_count": 407371
+          },
+          {
+            "count": 1411,
+            "name": "轻小说改",
+            "total_count": 500302
+          },
+          {
+            "count": 1339,
+            "name": "恋爱",
+            "total_count": 571164
+          },
+          {
+            "count": 1238,
+            "name": "校园",
+            "total_count": 459118
+          },
+          {
+            "count": 1189,
+            "name": "2020年10月",
+            "total_count": 25485
+          },
+          {
+            "count": 1028,
+            "name": "入间人间",
+            "total_count": 2162
+          },
+          {
+            "count": 951,
+            "name": "TV",
+            "total_count": 1418607
+          },
+          {
+            "count": 770,
+            "name": "手冢Production",
+            "total_count": 2228
+          },
+          {
+            "count": 575,
+            "name": "2020",
+            "total_count": 64391
+          },
+          {
+            "count": 554,
+            "name": "日常",
+            "total_count": 405477
+          },
+          {
+            "count": 508,
+            "name": "轻改",
+            "total_count": 153732
+          },
+          {
+            "count": 313,
+            "name": "安达与岛村",
+            "total_count": 313
+          },
+          {
+            "count": 225,
+            "name": "小说改",
+            "total_count": 162526
+          },
+          {
+            "count": 137,
+            "name": "日本",
+            "total_count": 303347
+          },
+          {
+            "count": 115,
+            "name": "GL",
+            "total_count": 1278
+          },
+          {
+            "count": 87,
+            "name": "手塚PRODUCTION",
+            "total_count": 5072
+          },
+          {
+            "count": 79,
+            "name": "桑原智",
+            "total_count": 472
+          },
+          {
+            "count": 39,
+            "name": "治愈",
+            "total_count": 304504
+          },
+          {
+            "count": 25,
+            "name": "2020年",
+            "total_count": 3096
+          },
+          {
+            "count": 19,
+            "name": "伊藤美来",
+            "total_count": 1104
+          },
+          {
+            "count": 18,
+            "name": "青春",
+            "total_count": 108317
+          },
+          {
+            "count": 17,
+            "name": "手塚プロダクション",
+            "total_count": 205
+          },
+          {
+            "count": 14,
+            "name": "真百",
+            "total_count": 324
+          },
+          {
+            "count": 12,
+            "name": "萌",
+            "total_count": 71729
+          },
+          {
+            "count": 11,
+            "name": "大知慶一郎",
+            "total_count": 353
+          },
+          {
+            "count": 10,
+            "name": "季番",
+            "total_count": 8471
+          },
+          {
+            "count": 10,
+            "name": "鬼头明里",
+            "total_count": 259
+          },
+          {
+            "count": 9,
+            "name": "鬼頭明里",
+            "total_count": 1598
+          },
+          {
+            "count": 8,
+            "name": "补番",
+            "total_count": 10524
+          },
+          {
+            "count": 7,
+            "name": "入間人間",
+            "total_count": 24
+          }
+        ],
+        "total_episodes": 12,
+        "type": 2,
+        "volumes": 0
+      },
+      "identity": {
+        "external_id": "81467",
+        "relations": [
+          "书籍"
+        ],
+        "title": "安达与岛村"
+      },
+      "relations": [
+        {
+          "id": 10377,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/29/4e/10377_2xnN5.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/29/4e/10377_2xnN5.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/29/4e/10377_2xnN5.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/29/4e/10377_2xnN5.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/29/4e/10377_2xnN5.jpg"
+          },
+          "name": "電波女と青春男",
+          "name_cn": "电波女与青春男",
+          "relation": "相同世界观",
+          "type": 2
+        },
+        {
+          "id": 81467,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/b2/48/81467_7WnB2.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/b2/48/81467_7WnB2.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/b2/48/81467_7WnB2.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/b2/48/81467_7WnB2.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/b2/48/81467_7WnB2.jpg"
+          },
+          "name": "安達としまむら",
+          "name_cn": "安达与岛村",
+          "relation": "书籍",
+          "type": 1
+        },
+        {
+          "id": 314843,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/6f/58/314843_lUEPu.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/6f/58/314843_lUEPu.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/6f/58/314843_lUEPu.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/6f/58/314843_lUEPu.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/6f/58/314843_lUEPu.jpg"
+          },
+          "name": "君に会えた日",
+          "name_cn": "",
+          "relation": "片头曲",
+          "type": 3
+        },
+        {
+          "id": 314844,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/7f/cf/314844_6IHBm.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/7f/cf/314844_6IHBm.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/7f/cf/314844_6IHBm.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/7f/cf/314844_6IHBm.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/7f/cf/314844_6IHBm.jpg"
+          },
+          "name": "キミのとなりで",
+          "name_cn": "",
+          "relation": "片尾曲",
+          "type": 3
+        },
+        {
+          "id": 319501,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/8b/7c/319501_nZCnT.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/8b/7c/319501_nZCnT.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/8b/7c/319501_nZCnT.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/8b/7c/319501_nZCnT.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/8b/7c/319501_nZCnT.jpg"
+          },
+          "name": "TVアニメ「安達としまむら」オリジナル・サウンドトラック",
+          "name_cn": "",
+          "relation": "原声集",
+          "type": 3
+        },
+        {
+          "id": 354210,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/ee/66/354210_diR4r.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/ee/66/354210_diR4r.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/ee/66/354210_diR4r.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/ee/66/354210_diR4r.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/ee/66/354210_diR4r.jpg"
+          },
+          "name": "「君に会えた日」ソロver.楽曲CD",
+          "name_cn": "",
+          "relation": "角色歌",
+          "type": 3
+        },
+        {
+          "id": 451466,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/b0/1e/451466_aI500.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/b0/1e/451466_aI500.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/b0/1e/451466_aI500.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/b0/1e/451466_aI500.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/b0/1e/451466_aI500.jpg"
+          },
+          "name": "安達としまむら99.9",
+          "name_cn": "安达与岛村99.9",
+          "relation": "书籍",
+          "type": 1
+        }
+      ],
+      "volumes": []
+    },
+    "283417": {
+      "entry": {
+        "collection": {
+          "collect": 422,
+          "doing": 519,
+          "dropped": 11,
+          "on_hold": 70,
+          "wish": 324
+        },
+        "date": "2019-11-27",
+        "eps": 0,
+        "id": 283417,
+        "images": {
+          "common": "https://lain.bgm.tv/r/400/pic/cover/l/a9/83/283417_gNmsf.jpg",
+          "grid": "https://lain.bgm.tv/r/100/pic/cover/l/a9/83/283417_gNmsf.jpg",
+          "large": "https://lain.bgm.tv/pic/cover/l/a9/83/283417_gNmsf.jpg",
+          "medium": "https://lain.bgm.tv/r/800/pic/cover/l/a9/83/283417_gNmsf.jpg",
+          "small": "https://lain.bgm.tv/r/200/pic/cover/l/a9/83/283417_gNmsf.jpg"
+        },
+        "infobox": [
+          {
+            "key": "中文名",
+            "value": "安达与岛村"
+          },
+          {
+            "key": "作画",
+            "value": "柚原もけ"
+          },
+          {
+            "key": "原作",
+            "value": "入間人間"
+          },
+          {
+            "key": "出版社",
+            "value": "KADOKAWA"
+          },
+          {
+            "key": "连载杂志",
+            "value": "月刊コミック電撃大王"
+          },
+          {
+            "key": "发售日",
+            "value": "2019-11-27"
+          },
+          {
+            "key": "人物原案",
+            "value": "のん"
+          },
+          {
+            "key": "开始",
+            "value": "2019-05-27 (2019年7月号)"
+          },
+          {
+            "key": "版本:台角版",
+            "value": [
+              {
+                "k": "版本名",
+                "v": "安達與島村"
+              },
+              {
+                "k": "别名",
+                "v": "安达与岛村"
+              },
+              {
+                "k": "语言",
+                "v": "繁体中文"
+              },
+              {
+                "k": "书系",
+                "v": "Comics Boys Series Jr."
+              },
+              {
+                "k": "出版社",
+                "v": "台灣角川"
+              },
+              {
+                "k": "发售日",
+                "v": "2026-04-23"
+              },
+              {
+                "k": "译者",
+                "v": "蒼貓"
+              }
+            ]
+          }
+        ],
+        "locked": false,
+        "meta_tags": [
+          "日本",
+          "漫画"
+        ],
+        "name": "安達としまむら",
+        "name_cn": "安达与岛村",
+        "nsfw": false,
+        "platform": "漫画",
+        "rating": {
+          "count": {
+            "1": 0,
+            "10": 74,
+            "2": 0,
+            "3": 0,
+            "4": 2,
+            "5": 2,
+            "6": 17,
+            "7": 96,
+            "8": 200,
+            "9": 117
+          },
+          "rank": 312,
+          "score": 8.2,
+          "total": 508
+        },
+        "series": true,
+        "summary": "TVアニメ化も決定した電撃文庫の大人気シリーズをコミカライズ‼\r\n\r\n授業中。体育館の二階。\r\n授業をさぼってたどりついたこの場所からふたりの友情が始まった。\r\nここで卓球したり、おしゃべりしたりしながらのんびりと青春の時間を過ごす二人の女子高生の物語――。",
+        "tags": [
+          {
+            "count": 285,
+            "name": "百合",
+            "total_count": 69275
+          },
+          {
+            "count": 229,
+            "name": "漫画",
+            "total_count": 400362
+          },
+          {
+            "count": 113,
+            "name": "入间人间",
+            "total_count": 3421
+          },
+          {
+            "count": 112,
+            "name": "柚原もけ",
+            "total_count": 116
+          },
+          {
+            "count": 86,
+            "name": "校园",
+            "total_count": 39382
+          },
+          {
+            "count": 72,
+            "name": "安达与岛村",
+            "total_count": 529
+          },
+          {
+            "count": 64,
+            "name": "小说改",
+            "total_count": 17617
+          },
+          {
+            "count": 57,
+            "name": "恋爱",
+            "total_count": 74407
+          },
+          {
+            "count": 37,
+            "name": "入間人間",
+            "total_count": 3240
+          },
+          {
+            "count": 34,
+            "name": "轻小说改",
+            "total_count": 4908
+          },
+          {
+            "count": 25,
+            "name": "2019",
+            "total_count": 6829
+          },
+          {
+            "count": 21,
+            "name": "月刊コミック電撃大王",
+            "total_count": 388
+          },
+          {
+            "count": 17,
+            "name": "清新",
+            "total_count": 185
+          },
+          {
+            "count": 9,
+            "name": "重置",
+            "total_count": 26
+          },
+          {
+            "count": 8,
+            "name": "日常",
+            "total_count": 20825
+          },
+          {
+            "count": 7,
+            "name": "日本",
+            "total_count": 50569
+          },
+          {
+            "count": 5,
+            "name": "轻改",
+            "total_count": 3414
+          },
+          {
+            "count": 3,
+            "name": "GL",
+            "total_count": 1320
+          },
+          {
+            "count": 3,
+            "name": "KADOKAWA",
+            "total_count": 2991
+          },
+          {
+            "count": 2,
+            "name": "B漫",
+            "total_count": 421
+          },
+          {
+            "count": 2,
+            "name": "连载中",
+            "total_count": 12914
+          },
+          {
+            "count": 2,
+            "name": "漫画系列",
+            "total_count": 29986
+          },
+          {
+            "count": 2,
+            "name": "未完结",
+            "total_count": 393
+          },
+          {
+            "count": 2,
+            "name": "系列",
+            "total_count": 26141
+          },
+          {
+            "count": 1,
+            "name": "日漫GL",
+            "total_count": 690
+          },
+          {
+            "count": 1,
+            "name": "哔哩哔哩",
+            "total_count": 190
+          },
+          {
+            "count": 1,
+            "name": "26.2.5",
+            "total_count": 1
+          },
+          {
+            "count": 1,
+            "name": "连载",
+            "total_count": 313
+          },
+          {
+            "count": 1,
+            "name": "XXXX",
+            "total_count": 63
+          },
+          {
+            "count": 1,
+            "name": "top350",
+            "total_count": 38
+          }
+        ],
+        "total_episodes": 0,
+        "type": 1,
+        "volumes": 0
+      },
+      "identity": {
+        "external_id": "81467",
+        "relations": [
+          "书籍"
+        ],
+        "title": "安达与岛村"
+      },
+      "relations": [
+        {
+          "id": 81467,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/b2/48/81467_7WnB2.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/b2/48/81467_7WnB2.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/b2/48/81467_7WnB2.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/b2/48/81467_7WnB2.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/b2/48/81467_7WnB2.jpg"
+          },
+          "name": "安達としまむら",
+          "name_cn": "安达与岛村",
+          "relation": "书籍",
+          "type": 1
+        },
+        {
+          "id": 181467,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/0e/90/181467_8Vc1w.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/0e/90/181467_8Vc1w.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/0e/90/181467_8Vc1w.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/0e/90/181467_8Vc1w.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/0e/90/181467_8Vc1w.jpg"
+          },
+          "name": "安達としまむら",
+          "name_cn": "安达与岛村",
+          "relation": "不同版本",
+          "type": 1
+        },
+        {
+          "id": 295269,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/ce/d7/295269_3830x.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/ce/d7/295269_3830x.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/ce/d7/295269_3830x.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/ce/d7/295269_3830x.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/ce/d7/295269_3830x.jpg"
+          },
+          "name": "安達としまむら (1)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 313541,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/f3/b4/313541_85x3l.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/f3/b4/313541_85x3l.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/f3/b4/313541_85x3l.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/f3/b4/313541_85x3l.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/f3/b4/313541_85x3l.jpg"
+          },
+          "name": "安達としまむら (2)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 333910,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/e0/ed/333910_2AXzW.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/e0/ed/333910_2AXzW.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/e0/ed/333910_2AXzW.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/e0/ed/333910_2AXzW.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/e0/ed/333910_2AXzW.jpg"
+          },
+          "name": "安達としまむら (3)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 363930,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/49/02/363930_3jq2c.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/49/02/363930_3jq2c.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/49/02/363930_3jq2c.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/49/02/363930_3jq2c.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/49/02/363930_3jq2c.jpg"
+          },
+          "name": "安達としまむら (4)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 432612,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/85/d0/432612_JL0GJ.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/85/d0/432612_JL0GJ.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/85/d0/432612_JL0GJ.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/85/d0/432612_JL0GJ.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/85/d0/432612_JL0GJ.jpg"
+          },
+          "name": "安達としまむら (5)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 498236,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/cd/af/498236_i8I8Z.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/cd/af/498236_i8I8Z.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/cd/af/498236_i8I8Z.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/cd/af/498236_i8I8Z.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/cd/af/498236_i8I8Z.jpg"
+          },
+          "name": "安達としまむら (6)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 560445,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/eb/2f/560445_bs7dZ.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/eb/2f/560445_bs7dZ.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/eb/2f/560445_bs7dZ.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/eb/2f/560445_bs7dZ.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/eb/2f/560445_bs7dZ.jpg"
+          },
+          "name": "安達としまむら (7)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 625665,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/4f/57/625665_l9L3p.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/4f/57/625665_l9L3p.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/4f/57/625665_l9L3p.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/4f/57/625665_l9L3p.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/4f/57/625665_l9L3p.jpg"
+          },
+          "name": "安達としまむら  (8)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 698438,
+          "images": {
+            "common": "",
+            "grid": "",
+            "large": "",
+            "medium": "",
+            "small": ""
+          },
+          "name": "安達としまむら  (9)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        }
+      ],
+      "volumes": [
+        {
+          "external_id": "295269",
+          "number": 1.0,
+          "published_on": "2019-11-27",
+          "title": "安達としまむら (1)"
+        },
+        {
+          "external_id": "313541",
+          "number": 2.0,
+          "published_on": "2020-10-10",
+          "title": "安達としまむら (2)"
+        },
+        {
+          "external_id": "333910",
+          "number": 3.0,
+          "published_on": "2021-05-27",
+          "title": "安達としまむら (3)"
+        },
+        {
+          "external_id": "363930",
+          "number": 4.0,
+          "published_on": "2022-02-26",
+          "title": "安達としまむら (4)"
+        },
+        {
+          "external_id": "432612",
+          "number": 5.0,
+          "published_on": "2023-06-27",
+          "title": "安達としまむら (5)"
+        },
+        {
+          "external_id": "498236",
+          "number": 6.0,
+          "published_on": "2024-07-26",
+          "title": "安達としまむら (6)"
+        },
+        {
+          "external_id": "560445",
+          "number": 7.0,
+          "published_on": "2025-06-27",
+          "title": "安達としまむら (7)"
+        },
+        {
+          "external_id": "625665",
+          "number": 8.0,
+          "published_on": "2026-04-10",
+          "title": "安達としまむら  (8)"
+        },
+        {
+          "external_id": "698438",
+          "number": 9.0,
+          "published_on": "2026-10-27",
+          "title": "安達としまむら  (9)"
+        }
+      ]
+    },
+    "81467": {
+      "entry": {
+        "collection": {
+          "collect": 1597,
+          "doing": 1292,
+          "dropped": 49,
+          "on_hold": 200,
+          "wish": 1475
+        },
+        "date": "2013-03-10",
+        "eps": 0,
+        "id": 81467,
+        "images": {
+          "common": "https://lain.bgm.tv/r/400/pic/cover/l/b2/48/81467_7WnB2.jpg",
+          "grid": "https://lain.bgm.tv/r/100/pic/cover/l/b2/48/81467_7WnB2.jpg",
+          "large": "https://lain.bgm.tv/pic/cover/l/b2/48/81467_7WnB2.jpg",
+          "medium": "https://lain.bgm.tv/r/800/pic/cover/l/b2/48/81467_7WnB2.jpg",
+          "small": "https://lain.bgm.tv/r/200/pic/cover/l/b2/48/81467_7WnB2.jpg"
+        },
+        "infobox": [
+          {
+            "key": "中文名",
+            "value": "安达与岛村"
+          },
+          {
+            "key": "别名",
+            "value": [
+              {
+                "v": "Adachi and Shimamura"
+              }
+            ]
+          },
+          {
+            "key": "作者",
+            "value": "入間人間"
+          },
+          {
+            "key": "插图",
+            "value": "のん (1-8卷)、金子志津枝 (9卷)、raemz (10卷-)"
+          },
+          {
+            "key": "出版社",
+            "value": "アスキー・メディアワークス→KADOKAWA"
+          },
+          {
+            "key": "连载杂志",
+            "value": "電撃文庫MAGAZINE"
+          },
+          {
+            "key": "发售日",
+            "value": "2013-03-10"
+          },
+          {
+            "key": "册数",
+            "value": "13卷既刊（2025-11）"
+          },
+          {
+            "key": "版本:台湾角川版",
+            "value": [
+              {
+                "k": "版本名",
+                "v": "安達與島村"
+              },
+              {
+                "k": "出版社",
+                "v": "台灣角川"
+              },
+              {
+                "k": "发售日",
+                "v": "2014-03-27"
+              },
+              {
+                "k": "册数",
+                "v": "既刊11卷(2024-10)"
+              }
+            ]
+          },
+          {
+            "key": "版本:英文版",
+            "value": [
+              {
+                "k": "版本名",
+                "v": "Adachi and Shimamura"
+              },
+              {
+                "k": "出版社",
+                "v": "Seven Seas"
+              },
+              {
+                "k": "电子发售日",
+                "v": "2020-04-16"
+              },
+              {
+                "k": "实体发售日",
+                "v": "2020-06-14"
+              },
+              {
+                "k": "册数",
+                "v": "既刊11卷(2023-10)"
+              }
+            ]
+          }
+        ],
+        "locked": false,
+        "meta_tags": [
+          "日本",
+          "小说",
+          "百合",
+          "恋爱",
+          "日常",
+          "GL",
+          "原创",
+          "系列"
+        ],
+        "name": "安達としまむら",
+        "name_cn": "安达与岛村",
+        "nsfw": false,
+        "platform": "小说",
+        "rating": {
+          "count": {
+            "1": 5,
+            "10": 498,
+            "2": 3,
+            "3": 4,
+            "4": 6,
+            "5": 7,
+            "6": 45,
+            "7": 128,
+            "8": 383,
+            "9": 631
+          },
+          "rank": 40,
+          "score": 8.8,
+          "total": 1710
+        },
+        "series": true,
+        "summary": "★奇才入間人間又一校園系力作登場！\r\n★高中女孩間的微妙友誼物語就此展開。\r\n\r\n高一女學生安達與島村是好朋友，她們總是膩在一起聊天，\r\n偶爾打桌球，培育著名為友情的情感。\r\n然而某天夜晚，安達夢見自己和島村接吻，\r\n因此意識到了一份不一樣的情感!?\r\n過著日常生活的女高中生──安達與島村。\r\n這一天，彼此的關係稍微起了改變。",
+        "tags": [
+          {
+            "count": 1029,
+            "name": "百合",
+            "total_count": 69277
+          },
+          {
+            "count": 793,
+            "name": "轻小说",
+            "total_count": 136775
+          },
+          {
+            "count": 584,
+            "name": "入間人間",
+            "total_count": 3241
+          },
+          {
+            "count": 376,
+            "name": "恋爱",
+            "total_count": 74407
+          },
+          {
+            "count": 294,
+            "name": "校园",
+            "total_count": 39382
+          },
+          {
+            "count": 210,
+            "name": "安达与岛村",
+            "total_count": 529
+          },
+          {
+            "count": 189,
+            "name": "入间人间",
+            "total_count": 3421
+          },
+          {
+            "count": 152,
+            "name": "小说",
+            "total_count": 58813
+          },
+          {
+            "count": 142,
+            "name": "電撃文庫",
+            "total_count": 1551
+          },
+          {
+            "count": 114,
+            "name": "日常",
+            "total_count": 20825
+          },
+          {
+            "count": 87,
+            "name": "日本",
+            "total_count": 50569
+          },
+          {
+            "count": 72,
+            "name": "2013",
+            "total_count": 3214
+          },
+          {
+            "count": 50,
+            "name": "GL",
+            "total_count": 1320
+          },
+          {
+            "count": 48,
+            "name": "安達としまむら",
+            "total_count": 53
+          },
+          {
+            "count": 36,
+            "name": "原创",
+            "total_count": 24009
+          },
+          {
+            "count": 33,
+            "name": "系列",
+            "total_count": 26141
+          },
+          {
+            "count": 22,
+            "name": "のん",
+            "total_count": 43
+          },
+          {
+            "count": 15,
+            "name": "小说系列",
+            "total_count": 7338
+          },
+          {
+            "count": 12,
+            "name": "细腻",
+            "total_count": 419
+          },
+          {
+            "count": 8,
+            "name": "神作",
+            "total_count": 3943
+          },
+          {
+            "count": 8,
+            "name": "青春",
+            "total_count": 14487
+          },
+          {
+            "count": 6,
+            "name": "治愈",
+            "total_count": 14587
+          },
+          {
+            "count": 3,
+            "name": "漫画",
+            "total_count": 400362
+          },
+          {
+            "count": 3,
+            "name": "纯爱",
+            "total_count": 11831
+          },
+          {
+            "count": 3,
+            "name": "电击文库",
+            "total_count": 1292
+          },
+          {
+            "count": 2,
+            "name": "电波",
+            "total_count": 1152
+          },
+          {
+            "count": 2,
+            "name": "搜索用",
+            "total_count": 939
+          },
+          {
+            "count": 2,
+            "name": "金子志津枝",
+            "total_count": 2
+          },
+          {
+            "count": 2,
+            "name": "未完结",
+            "total_count": 393
+          },
+          {
+            "count": 2,
+            "name": "KADOKAWA",
+            "total_count": 2991
+          }
+        ],
+        "total_episodes": 0,
+        "type": 1,
+        "volumes": 13
+      },
+      "identity": {
+        "external_id": "81467",
+        "relations": [],
+        "title": "安达与岛村"
+      },
+      "relations": [
+        {
+          "id": 283417,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/a9/83/283417_gNmsf.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/a9/83/283417_gNmsf.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/a9/83/283417_gNmsf.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/a9/83/283417_gNmsf.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/a9/83/283417_gNmsf.jpg"
+          },
+          "name": "安達としまむら",
+          "name_cn": "安达与岛村",
+          "relation": "书籍",
+          "type": 1
+        },
+        {
+          "id": 625675,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/b6/fe/625675_i1Q7r.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/b6/fe/625675_i1Q7r.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/b6/fe/625675_i1Q7r.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/b6/fe/625675_i1Q7r.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/b6/fe/625675_i1Q7r.jpg"
+          },
+          "name": "raemz画集 Amour",
+          "name_cn": "",
+          "relation": "画集",
+          "type": 1
+        },
+        {
+          "id": 514038,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/25/8c/514038_PeLyf.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/25/8c/514038_PeLyf.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/25/8c/514038_PeLyf.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/25/8c/514038_PeLyf.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/25/8c/514038_PeLyf.jpg"
+          },
+          "name": "安達としまむらSS",
+          "name_cn": "安达与岛村SS",
+          "relation": "番外篇",
+          "type": 1
+        },
+        {
+          "id": 373779,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/17/7d/373779_94GQ8.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/17/7d/373779_94GQ8.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/17/7d/373779_94GQ8.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/17/7d/373779_94GQ8.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/17/7d/373779_94GQ8.jpg"
+          },
+          "name": "私の初恋相手がキスしてた",
+          "name_cn": "我的初恋对象与人接吻了",
+          "relation": "相同世界观",
+          "type": 1
+        },
+        {
+          "id": 7918,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/bc/37/7918_BJh6Z.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/bc/37/7918_BJh6Z.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/bc/37/7918_BJh6Z.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/bc/37/7918_BJh6Z.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/bc/37/7918_BJh6Z.jpg"
+          },
+          "name": "電波女と青春男",
+          "name_cn": "电波女与青春男",
+          "relation": "相同世界观",
+          "type": 1
+        },
+        {
+          "id": 282372,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/0f/a4/282372_pqp0S.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/0f/a4/282372_pqp0S.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/0f/a4/282372_pqp0S.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/0f/a4/282372_pqp0S.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/0f/a4/282372_pqp0S.jpg"
+          },
+          "name": "安達としまむら",
+          "name_cn": "安达与岛村",
+          "relation": "动画",
+          "type": 2
+        },
+        {
+          "id": 181467,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/0e/90/181467_8Vc1w.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/0e/90/181467_8Vc1w.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/0e/90/181467_8Vc1w.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/0e/90/181467_8Vc1w.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/0e/90/181467_8Vc1w.jpg"
+          },
+          "name": "安達としまむら",
+          "name_cn": "安达与岛村",
+          "relation": "书籍",
+          "type": 1
+        },
+        {
+          "id": 66306,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/ad/94/66306_iITvB.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/ad/94/66306_iITvB.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/ad/94/66306_iITvB.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/ad/94/66306_iITvB.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/ad/94/66306_iITvB.jpg"
+          },
+          "name": "安達としまむら",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 451466,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/b0/1e/451466_aI500.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/b0/1e/451466_aI500.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/b0/1e/451466_aI500.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/b0/1e/451466_aI500.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/b0/1e/451466_aI500.jpg"
+          },
+          "name": "安達としまむら99.9",
+          "name_cn": "安达与岛村99.9",
+          "relation": "番外篇",
+          "type": 1
+        },
+        {
+          "id": 81468,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/fb/12/81468_Ta0mz.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/fb/12/81468_Ta0mz.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/fb/12/81468_Ta0mz.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/fb/12/81468_Ta0mz.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/fb/12/81468_Ta0mz.jpg"
+          },
+          "name": "安達としまむら (2)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 315185,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/c7/04/315185_6ynsZ.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/c7/04/315185_6ynsZ.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/c7/04/315185_6ynsZ.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/c7/04/315185_6ynsZ.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/c7/04/315185_6ynsZ.jpg"
+          },
+          "name": "安達としまむら 公式コミックアンソロジー",
+          "name_cn": "安达与岛村官方同人集",
+          "relation": "番外篇",
+          "type": 1
+        },
+        {
+          "id": 105266,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/60/c2/105266_zfFUt.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/60/c2/105266_zfFUt.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/60/c2/105266_zfFUt.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/60/c2/105266_zfFUt.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/60/c2/105266_zfFUt.jpg"
+          },
+          "name": "安達としまむら (3)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 131055,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/99/ac/131055_pEGje.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/99/ac/131055_pEGje.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/99/ac/131055_pEGje.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/99/ac/131055_pEGje.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/99/ac/131055_pEGje.jpg"
+          },
+          "name": "安達としまむら (4)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 152928,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/52/7a/152928_jp.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/52/7a/152928_jp.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/52/7a/152928_jp.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/52/7a/152928_jp.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/52/7a/152928_jp.jpg"
+          },
+          "name": "安達としまむら (5)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 180897,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/ad/d9/180897_D5lDF.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/ad/d9/180897_D5lDF.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/ad/d9/180897_D5lDF.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/ad/d9/180897_D5lDF.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/ad/d9/180897_D5lDF.jpg"
+          },
+          "name": "安達としまむら (6)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 192460,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/38/4a/192460_y355F.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/38/4a/192460_y355F.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/38/4a/192460_y355F.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/38/4a/192460_y355F.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/38/4a/192460_y355F.jpg"
+          },
+          "name": "安達としまむら (7)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 279831,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/33/d1/279831_2v8by.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/33/d1/279831_2v8by.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/33/d1/279831_2v8by.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/33/d1/279831_2v8by.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/33/d1/279831_2v8by.jpg"
+          },
+          "name": "安達としまむら (8)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 312159,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/95/3e/312159_HpuIz.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/95/3e/312159_HpuIz.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/95/3e/312159_HpuIz.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/95/3e/312159_HpuIz.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/95/3e/312159_HpuIz.jpg"
+          },
+          "name": "安達としまむら (9)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 341277,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/29/b4/341277_HDUHn.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/29/b4/341277_HDUHn.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/29/b4/341277_HDUHn.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/29/b4/341277_HDUHn.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/29/b4/341277_HDUHn.jpg"
+          },
+          "name": "安達としまむら (10)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 403870,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/3f/c7/403870_z9C55.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/3f/c7/403870_z9C55.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/3f/c7/403870_z9C55.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/3f/c7/403870_z9C55.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/3f/c7/403870_z9C55.jpg"
+          },
+          "name": "安達としまむら (11)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 513775,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/ba/41/513775_VY8YM.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/ba/41/513775_VY8YM.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/ba/41/513775_VY8YM.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/ba/41/513775_VY8YM.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/ba/41/513775_VY8YM.jpg"
+          },
+          "name": "安達としまむら (12)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        },
+        {
+          "id": 583169,
+          "images": {
+            "common": "https://lain.bgm.tv/r/400/pic/cover/l/0a/86/583169_W09Pz.jpg",
+            "grid": "https://lain.bgm.tv/r/100/pic/cover/l/0a/86/583169_W09Pz.jpg",
+            "large": "https://lain.bgm.tv/pic/cover/l/0a/86/583169_W09Pz.jpg",
+            "medium": "https://lain.bgm.tv/r/800/pic/cover/l/0a/86/583169_W09Pz.jpg",
+            "small": "https://lain.bgm.tv/r/200/pic/cover/l/0a/86/583169_W09Pz.jpg"
+          },
+          "name": "安達としまむら (13)",
+          "name_cn": "",
+          "relation": "单行本",
+          "type": 1
+        }
+      ],
+      "volumes": [
+        {
+          "external_id": "81468",
+          "number": 2.0,
+          "published_on": "2013-09-10",
+          "title": "安達としまむら (2)"
+        },
+        {
+          "external_id": "105266",
+          "number": 3.0,
+          "published_on": "2014-08-09",
+          "title": "安達としまむら (3)"
+        },
+        {
+          "external_id": "131055",
+          "number": 4.0,
+          "published_on": "2015-05-10",
+          "title": "安達としまむら (4)"
+        },
+        {
+          "external_id": "152928",
+          "number": 5.0,
+          "published_on": "2015-11-10",
+          "title": "安達としまむら (5)"
+        },
+        {
+          "external_id": "180897",
+          "number": 6.0,
+          "published_on": "2016-05-10",
+          "title": "安達としまむら (6)"
+        },
+        {
+          "external_id": "192460",
+          "number": 7.0,
+          "published_on": "2016-11-10",
+          "title": "安達としまむら (7)"
+        },
+        {
+          "external_id": "279831",
+          "number": 8.0,
+          "published_on": "2019-05-10",
+          "title": "安達としまむら (8)"
+        },
+        {
+          "external_id": "312159",
+          "number": 9.0,
+          "published_on": "2020-10-10",
+          "title": "安達としまむら (9)"
+        },
+        {
+          "external_id": "341277",
+          "number": 10.0,
+          "published_on": "2021-09-10",
+          "title": "安達としまむら (10)"
+        },
+        {
+          "external_id": "403870",
+          "number": 11.0,
+          "published_on": "2022-12-09",
+          "title": "安達としまむら (11)"
+        },
+        {
+          "external_id": "513775",
+          "number": 12.0,
+          "published_on": "2024-11-08",
+          "title": "安達としまむら (12)"
+        },
+        {
+          "external_id": "583169",
+          "number": 13.0,
+          "published_on": "2025-11-08",
+          "title": "安達としまむら (13)"
+        },
+        {
+          "external_id": "66306",
+          "number": null,
+          "published_on": "2013-03-10",
+          "title": "安達としまむら"
+        }
+      ]
+    }
+  },
+  "errors": {},
+  "origin_titles": {
+    "181467": [],
+    "282372": [],
+    "283417": [],
+    "81467": []
+  },
+  "source": "bangumi"
+}

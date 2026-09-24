@@ -6,11 +6,14 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import quote
 
-from app.sources.base import Candidate, Suggestion, WorkIdentity, snippet
-from app.sources.http import post_json
+from app.sources.base import Candidate, SourceRelation, Suggestion, WorkIdentity, snippet
+from app.sources.http import get_json_with_status, post_json
 
 API = "https://api.vndb.org/kana/vn"
+#: 令牌校验用。`API` 那一行是具体端点,这个只到 `/kana`,好让下面拼出 `/kana/authinfo`。
+KANA = "https://api.vndb.org/kana"
 SITE = "https://vndb.org/{id}"
 
 # 整个站只有视觉小说一类,所以类型推测在这里是个常数。
@@ -64,6 +67,58 @@ class Vndb:
     prefers_cjk = False
     # `bucket` 传什么都不改变请求,只是让调用方按同一套写法问它。
     media_buckets = {"game": "vn"}
+
+    def configured(self) -> bool:
+        """**永远 True:这个源就没有「缺凭据」这种状态。**
+
+        读公开条目不需要令牌(见 `verify_token`),那一格是留给「同步你自己账号的收藏」的。
+        所以这里不能照「凭据填了没有」去答 —— 那会让页面把一个明明能用的源报成没配好。
+        """
+        return True
+
+    def relations_of(self, external_id: str) -> list[SourceRelation]:
+        """**空表:VNDB 没有跨媒体关系图。**
+
+        `/vn` 只回「关联作品」那一栏(续作、外传),没有 Bangumi 那种「这一部是那一部的动画改编」的
+        关系表;而且整个站只有视觉小说一类,本来就没有跨媒体可言。所以家族归组在 VNDB 上拿不到东西 ——
+        **回空表是对的,不是缺陷**(与 `volumes_of` 同一种待遇)。
+        """
+        return []
+
+    @staticmethod
+    def verify_token(token: str) -> tuple[bool, str, dict]:
+        """拿这个令牌去问一句 VNDB「这是谁」。回 `(能不能用, 一句话, 账号资料)`。
+
+        **读公开条目根本不需要令牌**,所以这一格就算不填,VNDB 照样是个完整可用的源。
+        它有的用途只有一个:读**你自己账号里的收藏**。而 `GET /authinfo` 正好能回答
+        「这枚令牌是谁的、带着哪些权限」—— 顺带就把设置页那块账号区域填上了。
+
+        VNDB 的令牌在 `Authorization` 头里用的是 **`Token`** 这个类型,不是 `Bearer`;
+        而且令牌本身形如 `xxxx-xxxxx-...`,中间那些短横线可以省。
+        """
+        token = token.strip()
+        if not token:
+            return False, "还没有填 VNDB 的 API 令牌。", ""
+
+        answer, status = get_json_with_status(
+            f"{KANA}/authinfo", {"Authorization": f"Token {token}"}
+        )
+        if status == 200 and isinstance(answer, dict):
+            who = str(answer.get("username") or "").strip()
+            permissions = [str(item) for item in (answer.get("permissions") or [])]
+            detail = f"令牌有效,对应 VNDB 账号「{who}」。" if who else "令牌有效。"
+            if permissions:
+                detail += "权限:" + "、".join(permissions) + "。"
+            return True, detail, _account_shape(answer)
+        if status in (401, 403):
+            return (
+                False,
+                "VNDB 说这个令牌不对(401)。检查有没有复制完整、或者它是不是已经被撤销了。",
+                "",
+            )
+        if status is None:
+            return False, "连不上 VNDB,没法验证。网络通了再试,令牌已经填进去了。", ""
+        return False, f"VNDB 回了 {status},没法确认这个令牌。", ""
 
     def search(self, keyword: str, limit: int = 8, bucket: str = "") -> list[Candidate]:
         answer = post_json(
@@ -170,6 +225,29 @@ class Vndb:
         add("cover_url", _image(entry))
 
         return found
+
+
+def _account_shape(answer: dict) -> dict:
+    """`/authinfo` 的响应 → 我们那一份缓存的形状。
+
+    VNDB 那边给的东西很少:`id`(`u3`)、`username`、`permissions`。它**没有头像**,所以
+    `avatar_url` 留空 —— 设置页那块账号卡会自动退化成"名字首字"的占位,版式不变。
+
+    `id` 在这里是**字符串**(`u3` 那种格式),而库里那几处都按可空整数走,所以顺手拆掉前缀、
+    不认识就留空。`bio` 与 `signature` 它压根不给,一并留空。
+    """
+    raw_id = str(answer.get("id") or "")
+    digits = raw_id.lstrip("uU") if raw_id[:1] in ("u", "U") else raw_id
+    return {
+        "id": int(digits) if digits.isdigit() else None,
+        "name": str(answer.get("username") or ""),
+        "nickname": str(answer.get("username") or ""),
+        "avatar_url": "",
+        "bio": "",
+        "signature": "",
+        # VNDB 不给注册时间。
+        "registered_at": "",
+    }
 
 
 def _image(entry: dict) -> str | None:

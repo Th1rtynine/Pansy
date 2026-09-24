@@ -87,6 +87,31 @@ export function applySuggestions(
     values("release_status")[0] ?? "",
     (value) => (edition.release_status = value),
   );
+  const scalarFields = [
+    "ended_on", "subtype", "region", "language", "catalog_code", "homepage", "engine",
+    "audience", "reading_mode", "content_notice",
+  ] as const;
+  for (const field of scalarFields) {
+    put(edition[field], values(field)[0] ?? "", (value) => (edition[field] = value));
+  }
+  const count = Number(values("volume_count")[0]);
+  if (Number.isFinite(count) && count >= 0 && (edition.volume_count === null || overwrite)) {
+    edition.volume_count = count;
+    filled += 1;
+  }
+  for (const platform of values("platform")) {
+    if (!edition.platforms.includes(platform)) edition.platforms.push(platform);
+  }
+  for (const item of suggestions.filter((suggestion) => suggestion.field === "organization")) {
+    const row = { name: item.value, role: item.role ?? "" };
+    if (!edition.organizations.some((current) => current.name === row.name && current.role === row.role)) {
+      edition.organizations.push(row);
+    }
+  }
+  for (const item of suggestions.filter((suggestion) => suggestion.field === "official_link")) {
+    const row = { label: item.role || item.excerpt || "入口", url: item.value };
+    if (!edition.official_links.some((current) => current.url === row.url)) edition.official_links.push(row);
+  }
 
   // 作者与标签是「一条一条」的,不是一格:同名同职位不重复加,各自有上限。
   const seen = new Set(edition.creators.map((link) => `${link.name}|${link.role}`));
@@ -123,7 +148,7 @@ export function sourcesOf(suggestions: SourceSuggestion[], field: string): strin
   const names: string[] = [];
   for (const item of suggestions) {
     if (item.field !== field) continue;
-    const label = { bangumi: "Bangumi", vndb: "VNDB" }[item.source] ?? item.source;
+    const label = { bangumi: "Bangumi", vndb: "VNDB", hikarinagi: "Hikarinagi" }[item.source] ?? item.source;
     if (!names.includes(label)) names.push(label);
   }
   return names;

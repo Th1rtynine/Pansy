@@ -5,11 +5,11 @@
  * **总标题不再等于最早点击的载体**:后端沿来源的原作关系找作品身份(动画「某某 第二季」的总标题可取自关联的原作书籍,`edition.title` 仍保留它自己的),关系不可靠时才用候选本身。
  * **一部作品本来就是漫画、轻小说、Gal、动画各一条**,所以一次建出「总标题 + N 件」共用一个总标题;**预填只是草稿** —— 外部内容只落进格子给人过目,每格底下写着是谁给的、点得回去。
  */
-import { computed, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onUnmounted, reactive, ref, watch } from "vue";
+import { RouterLink, useRouter } from "vue-router";
 import { Alert, Button, FormField, Input, SegmentedControl, Spinner, TagsInput, Text } from "../ui";
 
-import { sources, works } from "../api";
+import { settings as settingsApi, sources, works } from "../api";
 import { fieldsOf, labelOf, mediaTypes } from "../mediaTypes";
 import { applySuggestions, coverFrom, sourcesOf, TAG_TAKE } from "../prefill";
 import { labelOfSource } from "../sourceNames";
@@ -22,6 +22,7 @@ import type {
   SourceCandidate,
   SourceIdentityOut,
   SourceSuggestion,
+  SourceVolume,
   WorkIn,
 } from "../types";
 import CarrierFields from "../components/CarrierFields.vue";
@@ -58,6 +59,14 @@ type VolumeDraft = {
   title: string;
   published_on: string;
   cover_url: string;
+  catalog_code: string;
+  page_count: number | null;
+  volume_type: string;
+  /**
+   * 这一卷在源上是哪一条。**跨来源合并全靠它** —— 后端下次从另一个来源导同一卷时,靠它认回原来那一行。
+   * 认不出来或者人手工加的卷就是空表(后端会当成一件没有来源的卷写进去)。
+   */
+  sourceRefs: { source: string; external_id: string; title?: string }[];
 };
 
 function emptyCarrier(mediaType: string): EditionIn {
@@ -65,10 +74,24 @@ function emptyCarrier(mediaType: string): EditionIn {
     media_type: mediaType,
     title: "",
     published_on: "",
+    ended_on: "",
+    subtype: "",
+    region: "",
+    language: "",
+    catalog_code: "",
+    homepage: "",
+    engine: "",
+    audience: "",
+    reading_mode: "",
+    content_notice: "",
+    platforms: [],
+    organizations: [],
+    official_links: [],
     summary: "",
     org: "",
     release_status: "",
     volume_count: null,
+    local_path: "",
     creators: [],
     tags: [],
   };
@@ -103,11 +126,56 @@ const found = ref<CollectOut | null>(null);
 const looking = ref(false);
 const searchText = ref("");
 const searched = ref(false);
+let searchTimer: ReturnType<typeof window.setTimeout> | null = null;
+let searchRun = 0;
+let searchAbort: AbortController | null = null;
+let composingSearch = false;
 const workIdentity = ref<SourceIdentityOut | null>(null);
 const workSuggestions = ref<SourceSuggestion[]>([]);
 const workIdentityStamp = ref("");
+const sourcePriority = ref<string[]>(["hikarinagi", "bangumi", "vndb"]);
+/** 当前条目的原作已在库里时，本次导入直接追加到那一部。 */
+const existingWork = ref<{ id: number; title: string } | null>(null);
 /** 人碰过的正式字段不再被后续自动发现覆盖。 */
 const workTouched = reactive({ title: false, original_title: false, aliases: false });
+
+/**
+ * 哪些源现在没有凭据(Bangumi 没填令牌、Hikarinagi 没填 client_id/secret 时是 `false`)。
+ * **取不到也不拦页面** —— 没有凭据只是少一类内容(或整个源不可用),搜索本身照常能用,
+ * 所以这里读失败就当「不知道」,不当作错误往页面上抛。
+ */
+const unconfigured = ref<{ name: string; label: string; fix: string }[]>([]);
+void sources
+  .list()
+  .then((items) => {
+    unconfigured.value = items
+      .filter((item) => !item.configured)
+      .map((item) => ({
+        name: item.name,
+        label: item.label,
+        // 「去哪儿配」由后端给 —— 每个源要填的东西不一样,页面不自己编那句话。
+        fix: item.configure_hint,
+      }));
+  })
+  .catch(() => {
+    unconfigured.value = [];
+  });
+void settingsApi.get().then((value) => {
+  if (value.source_priority.length) sourcePriority.value = value.source_priority;
+}).catch(() => undefined);
+
+/**
+ * 搜完了、结果里却一条那个源的都没有,而它又还没配凭据 —— 这时最可能的原因就是缺凭据,
+ * 不说出来人会以为「这个站上根本没有这部作品」。**只在真的搜过之后才提示**。
+ */
+const missingCredential = computed(() => {
+  if (!searched.value) return null;
+  return (
+    unconfigured.value.find(
+      (item) => !(found.value?.candidates ?? []).some((candidate) => candidate.source === item.name),
+    ) ?? null
+  );
+});
 
 function formSnapshot(): string {
   return JSON.stringify({
@@ -161,7 +229,7 @@ const navItems = computed(() => [
   {
     key: "work",
     label: "作品信息",
-    detail: workForm.value.title || "总标题与别名",
+    detail: workForm.value.title || "名称与别名",
     done: Boolean(workForm.value.title.trim()),
   },
   ...drafts.value.map((draft) => ({
@@ -173,25 +241,72 @@ const navItems = computed(() => [
 ]);
 
 /**
- * 搜索框接受名字、Bangumi 编号、带前缀的编号或条目链接;搜索文字只活在搜索区,不会写进正式作品字段。按精确编号找到的条目由候选组件默认选中。
+ * 搜索框接受作品名、来源编号或条目链接;搜索文字只活在搜索区,不会写进正式作品字段。按精确编号找到的条目由候选组件默认选中。
  */
 async function look(text: string): Promise<void> {
   const keyword = text.trim();
   if (!keyword) return;
 
+  const run = ++searchRun;
+  searchAbort?.abort();
+  const controller = new AbortController();
+  searchAbort = controller;
   looking.value = true;
   error.value = "";
   try {
-    const answer = await sources.collect(keyword);
+    const answer = await sources.collect(keyword, controller.signal);
+    if (run !== searchRun) return;
     found.value = answer;
     searched.value = true;
   } catch (failure) {
+    if (controller.signal.aborted || run !== searchRun) return;
     found.value = null;
     error.value = messageOf(failure);
   } finally {
-    looking.value = false;
+    if (run === searchRun) looking.value = false;
   }
 }
+
+function scheduleSearch(value = searchText.value): void {
+  if (searchTimer !== null) window.clearTimeout(searchTimer);
+  searchTimer = null;
+  searchAbort?.abort();
+  searchRun += 1;
+
+  const keyword = value.trim();
+  if (!keyword) {
+    looking.value = false;
+    found.value = null;
+    searched.value = false;
+    return;
+  }
+  if (composingSearch) return;
+
+  // 一字标题也能搜，只是多等一小会儿，避免输入法刚落下第一个字就发出一轮宽检索。
+  const delay = [...keyword].length === 1 ? 850 : 500;
+  looking.value = true;
+  searchTimer = window.setTimeout(() => {
+    searchTimer = null;
+    void look(keyword);
+  }, delay);
+}
+
+function beginSearchComposition(): void {
+  composingSearch = true;
+  if (searchTimer !== null) window.clearTimeout(searchTimer);
+  searchTimer = null;
+}
+
+function endSearchComposition(): void {
+  composingSearch = false;
+  scheduleSearch();
+}
+
+watch(searchText, (value) => scheduleSearch(value));
+onUnmounted(() => {
+  if (searchTimer !== null) window.clearTimeout(searchTimer);
+  searchAbort?.abort();
+});
 
 /** 「用了这些词」那一行:**按词合并**,同一个词搜了哪几个源一起说。 */
 const stepLine = computed(() => {
@@ -260,16 +375,66 @@ function addSelf(mediaType: string): void {
 async function fillVolumes(): Promise<void> {
   await Promise.all(
     drafts.value.map(async (draft) => {
-      const series = draft.picks.find((item) => item.series);
-      if (!series || draft.volumes.length) return;
-      const found = await sources.volumes(series.source, series.external_id);
-      draft.volumes = found.map((volume, index) => ({
-        key: `${series.source}-${volume.external_id}-${index}`,
-        volume_number: volume.number,
-        title: volume.title ?? "",
-        published_on: volume.published_on ?? "",
-        cover_url: volume.cover_url ?? "",
-      }));
+      const series = draft.picks.filter((item) => item.series);
+      if (!series.length || draft.volumes.length) return;
+      const stamp = series.map(nameOf).join();
+      // 同一个具体版本可能同时选中了 Bangumi 与 Hikarinagi。两边并行读取，再按卷号（没有卷号时按
+      // 标题）合成一行；这样不是“挑一个源丢掉另一个”，保存时也能把两边的外部编号都记下来。
+      const batches = await Promise.all(
+        series.map(async (item) => {
+          try {
+            return await sources.volumes(item.source, item.external_id);
+          } catch {
+            return [] as SourceVolume[];
+          }
+        }),
+      );
+      const merged = new Map<string, VolumeDraft>();
+      for (const volume of batches.flat()) {
+        const titleKey = (volume.title ?? "")
+          .normalize("NFKC")
+          .toLocaleLowerCase()
+          .replace(/[\s\p{P}\p{S}]+/gu, "");
+        const identity = volume.number != null
+          ? `number:${volume.number}`
+          : `title:${titleKey || `${volume.source}:${volume.external_id}`}`;
+        const current = merged.get(identity);
+        const sourceRef = {
+          source: volume.source,
+          external_id: volume.external_id,
+          title: volume.title ?? undefined,
+        };
+        if (current) {
+          current.sourceRefs.push(sourceRef);
+          current.title ||= volume.title ?? "";
+          current.published_on ||= volume.published_on ?? "";
+          current.cover_url ||= volume.cover_url ?? "";
+          current.catalog_code ||= volume.catalog_code ?? "";
+          current.page_count ??= volume.page_count;
+          current.volume_type ||= volume.volume_type ?? "";
+          continue;
+        }
+        merged.set(identity, {
+          key: `${volume.source}-${volume.external_id}`,
+          volume_number: volume.number,
+          title: volume.title ?? "",
+          published_on: volume.published_on ?? "",
+          cover_url: volume.cover_url ?? "",
+          catalog_code: volume.catalog_code ?? "",
+          page_count: volume.page_count,
+          volume_type: volume.volume_type ?? "",
+          sourceRefs: [sourceRef],
+        });
+      }
+      // 等待来源回复时用户可能已经改选了版本；旧版本的卷不能晚到后写进新草稿。
+      if (draft.picks.filter((item) => item.series).map(nameOf).join() !== stamp || draft.volumes.length) {
+        return;
+      }
+      draft.volumes = [...merged.values()].sort((left, right) => {
+        if (left.volume_number == null) return right.volume_number == null ? 0 : 1;
+        if (right.volume_number == null) return -1;
+        return left.volume_number - right.volume_number;
+      });
     }),
   );
 }
@@ -311,6 +476,19 @@ function nameOf(item: SourceCandidate): string {
   return `${item.source}:${item.external_id}`;
 }
 
+function sourceRank(source: string): number {
+  const rank = sourcePriority.value.indexOf(source);
+  return rank < 0 ? sourcePriority.value.length : rank;
+}
+
+function orderPicks(items: SourceCandidate[]): SourceCandidate[] {
+  return [...items].sort((left, right) => sourceRank(left.source) - sourceRank(right.source));
+}
+
+function orderSuggestions(items: SourceSuggestion[]): SourceSuggestion[] {
+  return [...items].sort((left, right) => sourceRank(left.source) - sourceRank(right.source));
+}
+
 /** 每件各取各的建议,同时问清它属于哪个原作总标题。 */
 async function fillAll(): Promise<void> {
   const wanted = drafts.value
@@ -327,6 +505,21 @@ async function fillAll(): Promise<void> {
     await Promise.all(
       wanted.map(async ([draft, stamp]) => {
         draft.stamp = stamp;
+        // 先用来源条目自己携带的跨站编号补齐同一具体版本。标题相同不走这里，因此两部同名漫画不会合并。
+        const mapped = await Promise.all(
+          draft.picks.map((item) =>
+            sources.counterparts(item.source, item.external_id).catch(() => ({ items: [] })),
+          ),
+        );
+        if (draft.stamp !== stamp || !drafts.value.includes(draft)) return;
+        const peers = [...draft.picks, ...mapped.flatMap((answer) => answer.items)].filter(
+          (item, index, all) =>
+            item.media === draft.edition.media_type &&
+            all.findIndex((other) => nameOf(other) === nameOf(item)) === index,
+        );
+        draft.picks = orderPicks(peers);
+        const enrichedStamp = draft.picks.map(nameOf).join();
+        draft.stamp = enrichedStamp;
         const identityPick =
           draft.picks.find((item) => item.source === "bangumi") ?? draft.picks[0];
         const [suggestions, identity] = await Promise.all([
@@ -338,16 +531,17 @@ async function fillAll(): Promise<void> {
             .catch(() => ({ work: identityPick, relations: [] })),
         ]);
         // 人在请求途中又换了候选时,旧响应不能回头覆盖新草稿。
-        if (draft.stamp !== stamp || !drafts.value.includes(draft)) return;
-        draft.suggestions = suggestions;
+        if (draft.stamp !== enrichedStamp || !drafts.value.includes(draft)) return;
+        const ordered = orderSuggestions(suggestions);
+        draft.suggestions = ordered;
         draft.identity = identity;
         // 这里只填载体。总标题由所有已选载体的 identity 一起决定,与点击顺序无关。
-        const result = applySuggestions(suggestions, {
+        const result = applySuggestions(ordered, {
           work: null,
           edition: draft.edition,
         });
         draft.skippedTags = result.skippedTags;
-        if (!draft.coverUrl) draft.coverUrl = coverFrom(suggestions);
+        if (!draft.coverUrl) draft.coverUrl = coverFrom(ordered);
       }),
     );
     await refreshWorkIdentity();
@@ -395,6 +589,7 @@ async function refreshWorkIdentity(): Promise<void> {
     workIdentity.value = null;
     workSuggestions.value = [];
     workIdentityStamp.value = "";
+    existingWork.value = null;
     if (!workTouched.title) workForm.value.title = "";
     if (!workTouched.original_title) workForm.value.original_title = "";
     if (!workTouched.aliases) workForm.value.aliases = [];
@@ -404,11 +599,17 @@ async function refreshWorkIdentity(): Promise<void> {
   const identity = chosen.identity;
   const stamp = nameOf(identity.work);
   workIdentity.value = identity;
+  try {
+    const owner = await sources.workClaim(identity.work.source, identity.work.external_id);
+    existingWork.value = owner ? { id: owner.work_id, title: owner.work_title } : null;
+  } catch {
+    existingWork.value = null;
+  }
   if (workIdentityStamp.value === stamp) return;
 
-  const suggestions = await sources.suggest([
+  const suggestions = orderSuggestions(await sources.suggest([
     { source: identity.work.source, external_id: identity.work.external_id },
-  ]);
+  ]));
   // 完整条目还在路上时,人可能已经换了一条身份:认出来的不再是它就作废。
   const stillChosen = [...drafts.value]
     .map((draft) => draft.identity)
@@ -433,8 +634,17 @@ async function refreshWorkIdentity(): Promise<void> {
 
 async function save(): Promise<void> {
   error.value = "";
+  if (filling.value > 0) {
+    error.value = "作品关系还在确认中，请稍等片刻。";
+    return;
+  }
+  if (identityConflict.value) {
+    error.value = "这些版本指向不同的作品，不能放进同一个条目。请取消其中不属于本作的版本后再加入。";
+    activePanel.value = "work";
+    return;
+  }
   if (!workForm.value.title.trim()) {
-    error.value = "作品总标题还没填。";
+    error.value = "还没有作品名称。";
     activePanel.value = "work";
     return;
   }
@@ -453,11 +663,26 @@ async function save(): Promise<void> {
   try {
     const created = await works.createWithEditions({
       work: workForm.value,
+      existing_work_id: existingWork.value?.id ?? null,
+      work_ref: workIdentity.value
+        ? {
+            source: workIdentity.value.work.source,
+            external_id: workIdentity.value.work.external_id,
+            title: workIdentity.value.work.title,
+          }
+        : null,
       // 总标题自己的封面 = **原作那一条的图**(填总标题那三个字段用的那一条),一次保存里顺手取回;
       // 认不出身份时留空 —— 那一部照样建起来,页面上看到的是第一件的封面。
       work_cover_url: workIdentity.value?.work.cover_url ?? "",
       editions: drafts.value.map((draft) => ({
         ...draft.edition,
+        identity_ref: draft.identity
+          ? {
+              source: draft.identity.work.source,
+              external_id: draft.identity.work.external_id,
+              title: draft.identity.work.title,
+            }
+          : null,
         refs: draft.picks.map((item) => ({
           source: item.source,
           external_id: item.external_id,
@@ -471,9 +696,19 @@ async function save(): Promise<void> {
           title: volume.title.trim(),
           summary: "",
           published_on: volume.published_on.trim(),
+          catalog_code: volume.catalog_code.trim(),
+          page_count: volume.page_count,
+          volume_type: volume.volume_type.trim(),
+          local_path: "",
           cover_url: volume.cover_url || undefined,
+          // 这一卷在源上是哪一条。**要发上去**:后端靠它跨来源合并,下次从另一个来源导同一卷
+          // 才认得回原来那一行,而不是又建一卷。
+          refs: volume.sourceRefs ?? [],
         })),
       })),
+      // 关联作品:**与主作品的件分开送**。它们各自是一部作品,只与主作品之间有一条有方向的关系;
+      // 混进 `editions` 就会变成「主作品的一件」,那正是规格不许的。默认空表 = 不建关联作品。
+      related: [],
     });
     savedSnapshot.value = formSnapshot();
     router.push(
@@ -491,6 +726,7 @@ async function save(): Promise<void> {
   <FormPage
     submit-label="加入"
     :saving="saving"
+    :submit-disabled="filling > 0 || identityConflict"
     cancel-to="/works"
     @submit="save"
   >
@@ -499,44 +735,58 @@ async function save(): Promise<void> {
     </template>
 
     <FormSection
-      title="从 Bangumi 查找"
-      description="搜索词只用来查找,不会写进作品资料。支持作品名、Bangumi 编号、bgm:编号或条目链接。"
+      title="从外部来源查找"
+      description="输入名称、来源编号或条目链接，结果会随输入自动更新。"
     >
       <FormField>
-        <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div class="relative">
           <Input
             v-model="searchText"
-            placeholder="例如:咒术回战、294993 或 Bangumi 条目链接"
+            placeholder="作品名、来源编号或条目链接"
             autocomplete="off"
-            @keydown.enter.prevent="look(searchText)"
+            class="pr-10"
+            @compositionstart="beginSearchComposition"
+            @compositionend="endSearchComposition"
           />
-          <Button
-            type="button"
-            variant="solid"
-            tone="accent"
-            :loading="looking"
-            :disabled="looking || !searchText.trim()"
-            class="w-full sm:w-auto"
-            @click="look(searchText)"
-          >
-            搜索 Bangumi
-          </Button>
+          <Spinner
+            v-if="looking"
+            size="sm"
+            label="正在查找"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-accent-text"
+          />
         </div>
-        <Text size="sm" tone="faint">
-          一到三位纯数字仍按作品名搜索;四位以上纯数字按 Bangumi 编号读取。
+        <Text v-if="!searchText.trim()" size="sm" tone="faint">
+          支持标题、别名、拼音、来源编号与条目链接。
         </Text>
-        <Text v-if="stepLine" size="sm" tone="faint">本次使用:{{ stepLine }}</Text>
+        <Text v-else-if="looking" size="sm" tone="faint">正在整理各来源的结果…</Text>
+        <Text v-else-if="stepLine" size="sm" tone="faint">已检索：{{ stepLine }}</Text>
       </FormField>
     </FormSection>
 
     <FormSection
       v-if="searched"
-      title="选择要加入的版本"
-      description="可以同时选择漫画、轻小说、动画或游戏。选中后会读取完整资料,并尝试找到它的原作总标题。"
+      title="选择版本"
+      description="每张卡片是一种具体版本；同一版本的多个来源会在后台合并补全。"
     >
+      <!--
+        搜完了却是空的,而那个源又没配凭据 —— 最可能的原因就是缺凭据。**说清「为什么」并给出路**,
+        不然人会以为这个站上根本没有这部作品,转头去别处找。「去哪儿配」那句话由后端给。
+      -->
+      <Alert
+        v-if="missingCredential"
+        tone="warning"
+        :title="`${missingCredential.label} 还不能用`"
+      >
+        这些结果里没有一条来自 {{ missingCredential.label }},它现在没有配置凭据。
+        <RouterLink to="/settings" class="underline underline-offset-2">
+          {{ missingCredential.fix || "去设置页配一下" }}
+        </RouterLink>
+      </Alert>
+
       <SourceCandidates
         :candidates="found?.candidates ?? []"
         :resolved="found?.resolved ?? null"
+        :source-priority="sourcePriority"
         @picks="onPicks"
       />
     </FormSection>
@@ -570,10 +820,14 @@ async function save(): Promise<void> {
         <template v-if="activePanel === 'work'">
           <FormSection
             title="作品信息"
-            description="这一层描述共同的原作;动画、漫画等版本保留各自的标题与资料。"
+            description="根据已选版本自动整理，可在保存前调整。"
           >
-            <Alert v-if="identityConflict" tone="warning" title="发现多个作品依据">
-              选中的条目没有全部指向同一个原作。当前采用关联最多的一条,请核对下面三个字段。
+            <Alert v-if="identityConflict" tone="danger" title="这些版本不能一起加入">
+              它们指向不同的作品。请在上方取消不属于本作的版本；处理之前，“加入”会保持不可用。
+            </Alert>
+
+            <Alert v-if="existingWork" tone="success" title="将归入已有作品">
+              已找到《{{ existingWork.title }}》，本次选择的版本会直接加入这部作品，不再新建重复档案。
             </Alert>
 
             <div
@@ -581,7 +835,7 @@ async function save(): Promise<void> {
               class="flex flex-col gap-1 rounded-card border border-accent/30 bg-accent-soft px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
             >
               <div class="min-w-0">
-                <Text size="sm" tone="muted">总标题依据</Text>
+                <Text size="sm" tone="muted">归纳自</Text>
                 <div class="truncate font-medium text-accent-text">
                   {{ workIdentity.work.title || workIdentity.work.original_title }}
                 </div>
@@ -595,10 +849,10 @@ async function save(): Promise<void> {
               </Text>
             </div>
 
-            <FormField label="作品总标题" required description="整部作品共用的标题,可以修改自动结果">
+            <FormField label="作品名称">
               <Input
                 v-model="workForm.title"
-                placeholder="选中候选后自动填写,也可以自己输入"
+                placeholder="选择版本后自动填写"
                 @update:model-value="workTouched.title = true"
               />
               <Text v-if="fromWhom('title') || fromWhom('original_title')" size="sm" tone="faint">
@@ -615,7 +869,7 @@ async function save(): Promise<void> {
               </Text>
             </FormField>
 
-            <FormField label="原名" description="原作使用的原文标题">
+            <FormField label="原名" description="原作使用的标题">
               <Input
                 v-model="workForm.original_title"
                 @update:model-value="workTouched.original_title = true"
@@ -625,7 +879,7 @@ async function save(): Promise<void> {
               </Text>
             </FormField>
 
-            <FormField label="别名" description="选中候选后从完整条目读取;输入后按回车添加">
+            <FormField label="别名" description="输入后按回车添加">
               <TagsInput
                 v-model="workForm.aliases"
                 @update:model-value="workTouched.aliases = true"
@@ -635,7 +889,7 @@ async function save(): Promise<void> {
           </FormSection>
 
           <Text size="sm" tone="faint">
-            没被 Bangumi 收录的内容,可以在上方层级栏点「添加作品」后自己填写。
+            没有合适的结果？使用左侧「添加作品」手动建立一个版本。
           </Text>
         </template>
 
@@ -717,6 +971,11 @@ async function save(): Promise<void> {
                       title: '',
                       published_on: '',
                       cover_url: '',
+                      catalog_code: '',
+                      page_count: null,
+                      volume_type: '',
+                      // 人自己加的一卷没有来源 —— 后端会当成一件没有外部对应的卷写进去。
+                      sourceRefs: [],
                     },
                   ]
                 "

@@ -1,0 +1,2 @@
+# 仅发布桌面安装包时需要；应用运行依赖仍在 requirements.txt。
+pyinstaller>=6.22,<7.0

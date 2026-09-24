@@ -26,3 +26,20 @@ class Edition(Base):
     release_status: Mapped[str | None] = mapped_column(String)
     volume_count: Mapped[int | None] = mapped_column(Integer)
     published_on: Mapped[str | None] = mapped_column(String)
+    ended_on: Mapped[str | None] = mapped_column(String)
+    subtype: Mapped[str | None] = mapped_column(String)
+    region: Mapped[str | None] = mapped_column(String)
+    language: Mapped[str | None] = mapped_column(String)
+    catalog_code: Mapped[str | None] = mapped_column(String)
+    homepage: Mapped[str | None] = mapped_column(String)
+    engine: Mapped[str | None] = mapped_column(String)
+    audience: Mapped[str | None] = mapped_column(String)
+    reading_mode: Mapped[str | None] = mapped_column(String)
+    content_notice: Mapped[str | None] = mapped_column(String)
+    # 多值档案用 JSON 文本保存；仍属于这一具体版本，不会上提到 Work。
+    # 可空是为了让旧的手写 SQL/迁移探针仍能插入版本；读出时统一把空值当成 []。
+    platforms: Mapped[str | None] = mapped_column(Text, default="[]")
+    organizations: Mapped[str | None] = mapped_column(Text, default="[]")
+    official_links: Mapped[str | None] = mapped_column(Text, default="[]")
+    # 本机资源入口(可执行文件、目录、电子书或视频)。当前只记录，不由服务器直接执行。
+    local_path: Mapped[str | None] = mapped_column(String)

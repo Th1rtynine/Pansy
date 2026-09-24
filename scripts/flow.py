@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import random
 import re
+import stat
 import sys
 import urllib.error
 import urllib.parse
@@ -20,11 +22,12 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.config import load_paths  # noqa: E402
+from app.config import load_paths, load_source_settings  # noqa: E402
 from app.covers import covers_dir  # noqa: E402
 from app.db import create_db_engine  # noqa: E402
 from app.listing import PAGE_SIZE, WORK_SORT_VALUES  # noqa: E402
 from app.ratelimit import BURST  # noqa: E402
+from app.settings_store import profile_file, settings_file  # noqa: E402
 
 # Everything this script makes carries this prefix, so leftovers are findable in one query.
 PREFIX = "验收临时"
@@ -34,9 +37,11 @@ DEFAULT_BASE = "http://127.0.0.1:8011"
 COUNTED_TABLES = ("work", "edition", "volume", "edition_relation", "creator", "tag")
 
 
-#: 这次检查给哪一份作品、哪一卷写了封面文件 —— 摘掉与换一张都不动文件(见 `app/covers.py`),要清哪两条记录得自己记着。
+#: 这次检查给哪一份作品、哪一卷、哪个总标题写了封面文件 —— 摘掉与换一张都不动文件(见 `app/covers.py`),
+#: 要清哪几条记录得自己记着。
 COVER_EDITION_ID = 0
 COVER_VOLUME_ID = 0
+COVER_WORK_ID = 0
 
 
 class Stop(Exception):
@@ -204,8 +209,8 @@ TINY_PNG = base64.b64decode(
 
 
 def cover_files(kind: str, row_id: int) -> list[str]:
-    """这一条记录在硬盘上有哪几个封面文件 —— 按文件名找,不看数据库。`kind` 是 `"edition"` 或 `"volume"`:
-    两种封面的规矩完全一样,只有文件名分得出来(`edition-1.png` 与 `volume-3.png`)。"""
+    """这一条记录在硬盘上有哪几个封面文件 —— 按文件名找,不看数据库。`kind` 是 `"work"`、`"edition"`
+    或 `"volume"`:三种封面的规矩完全一样,只有文件名分得出来(`work-1.png` 与 `edition-1.png`)。"""
     return sorted(path.name for path in covers_dir().glob(f"{kind}-{row_id}.*"))
 
 
@@ -314,12 +319,152 @@ def clean_before(checks: Checks) -> None:
         print(f"     清掉上次留下的 {gone}")
 
 
+#: 文件名里带这些字样的,还原时一律按"含密"对待 —— 权限收紧到 0600。
+#: 凭据、登录令牌、账号资料:这三样都不该让本机别的用户读得到(理由与 `settings_store` 里
+#: 给会话文件 `chmod 0600` 是同一条)。
+_SECRET_NAME_PARTS = ("settings.json", "session.json", "_profile.json")
+
+
+def _is_secret_path(path) -> bool:
+    return any(part in path.name for part in _SECRET_NAME_PARTS)
+
+
+def _write_text(path, content: str) -> None:
+    """写一份文本文件:**先写同目录下的临时文件再替换**。
+
+    不直接用 `write_text` 的理由是还原过程中再次中断会留下**截断的 JSON** —— 那比"文件还在旧的
+    那一份"糟糕得多:下一次读它的人拿到的是一个解析不了的半截文件。同目录 + `replace()` 在同一个
+    文件系统上是原子的,所以要么是新的、要么还是旧的,没有中间态。
+
+    临时文件先按 0600 建(在 Windows 上是个空操作),这样**内容落盘之前权限就已经收好了**,
+    不存在"刚写完还是 0644、下一行才 chmod"的那个窗口。
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".json.tmp")
+    with open(temporary, "w", encoding="utf-8", opener=lambda name, flags: os.open(name, flags, 0o600)) as handle:
+        handle.write(content)
+    temporary.replace(path)
+
+
+def _restore_path(path, mode: int | None) -> None:
+    """还原之后把权限收回报错前的样子。
+
+    **含密的那些一律 0600,不看原权限。** 这一条要写在前面:`mode` 是"照原样还原",而原样可能
+    本来就是宽的(文件从来没被 `settings_store` 建过、或者人手工 chmod 过)。先前把两条的先后
+    写反了 —— 先按原权限还原、再收紧,于是后一步被前一步覆盖,等于没收紧(实测发现)。
+
+    其余文件按 `stat` 读来的访问位还原,免得把权限悄悄改宽或改窄。
+    都是尽力而为:Windows 上 `chmod` 基本是空操作,某些文件系统也不支持,做不到不算错。
+    """
+    if mode is None:
+        return
+    try:
+        path.chmod(0o600 if _is_secret_path(path) else stat.S_IMODE(mode))
+    except OSError:
+        pass
+
+
+def sweep_flow_backups() -> list[str]:
+    """清掉以前版本留在数据目录里的 `.flowbackup`。
+
+    **那个设计是错的,所以这一版把它删掉。** 它会把 `client_secret`、access token、refresh token
+    明文抄一份留在本机,而且**成功还原之后也不删** —— 换言之,为了防一次崩溃,长期多留了一份密钥。
+    留底现在只在内存里(见 `local_state_snapshot`),它唯一能挡的"崩溃"就是 Python 异常,
+    而那条路由 `main()` 的 `finally` 兜着;真被 Ctrl-C 或断电打断时,也不需要一份明文的密钥在那儿等着。
+
+    返回清掉的文件名,好让调用方打一行字出来。
+    """
+    removed = []
+    for leftover in sorted(load_paths().data_dir.glob("*.flowbackup")):
+        try:
+            leftover.unlink()
+        except OSError:
+            continue
+        removed.append(leftover.name)
+    return removed
+
+
+def local_state_snapshot() -> list[tuple]:
+    """把**会被这一跑弄丢的本地文件**挨个留底。收尾时照原样放回去。
+
+    要留的有三样,而且都是实测踩出来的:
+
+    - `settings.json` —— 那两格 Hikarinagi 凭据会被这一跑清掉。
+    - `hikarinagi_session.json` —— **凭据被清掉时后端会连带清掉登录会话**。删它的不是
+      `DELETE /api/settings`(那个只删设置),而是紧接着**用空凭据调保存接口**那一步:
+      那条路会 `forget_session()` 与 `forget_profile()`(会话离开凭据没法续期,那个设计是对的)。
+    - `{源}_profile.json` —— 同上,账号资料也会跟着没。**按源登记表 `SOURCES` 遍历,不写死名字**:
+      换凭据(或清掉)现在也会 `forget_profile()`,因为那份"你是谁"是配着旧凭据问出来的。
+
+    最后这一条踩过两次,值得记下来:**别用"有凭据可填的源"(`CREDENTIALS`)当这份名单** ——
+    Bangumi 的令牌走的是 `settings.json` 里那一格、不在 `CREDENTIALS` 里,于是它的资料一直没人留底。
+    而这一跑会往 Bangumi 写一个假令牌、再清掉,两条路都会把真资料删掉 —— 结果就是每跑一次验收,
+    设置页上那个真账号就被抹掉一次(实测:跑完 `bangumi_account` 整个空了)。名单要从 `SOURCES` 来,
+    它才是"有哪些源"的唯一出处。
+
+    **只在内存里留,不落盘一份备份文件**:那会把密钥明文再抄一份留在本机,而且成功还原之后也不删。
+    够用的理由是这里要挡的是"脚本自己抛异常半路退出",而那条路由 `main()` 的 `finally` 兜着。
+
+    每样返回 `(路径, 内容或 None, 原权限位或 None)`。
+    """
+    from app.settings_store import profile_file, session_file
+    from app.sources import SOURCES
+
+    targets = [settings_file(), session_file()]
+    targets += [profile_file(source) for source in SOURCES]
+    found = []
+    for path in targets:
+        if not path.is_file():
+            found.append((path, None, None))
+            continue
+        try:
+            found.append((path, path.read_text(encoding="utf-8"), path.stat().st_mode))
+        except OSError:
+            found.append((path, None, None))
+    return found
+
+
+def restore_local_state(snapshot: list[tuple]) -> None:
+    """把留底的那几份文件放回去。**文件级的还原,不是再调一次接口** ——
+    接口只会写它认得的那几个键,而"这个文件本来就不该存在"这件事只有文件系统知道。
+
+    留底里 `None` 表示"跑之前它不在",那就删掉 —— 而不是留一个空的 `{}`。
+    """
+    for path, content, mode in snapshot:
+        if content is None:
+            path.unlink(missing_ok=True)
+            continue
+        _write_text(path, content)
+        _restore_path(path, mode)
+
+
+
+def settings_from_snapshot(snapshot: list[tuple]):
+    """从留底里挑出设置那一份:`(跑之前的内容, 原权限位)`。
+
+    **它不自己去读文件** —— 留底只该在最早那一刻做一次(见 `main()`)。这里再读一次的话,
+    读到的可能是中途被弄坏的内容,而那份坏内容会被当成"跑之前的样子"。
+    实测踩过:人的 Hikarinagi 凭据就是这么丢的。
+    """
+    for path, content, mode in snapshot:
+        if path == settings_file():
+            return content, mode
+    raise AssertionError("留底里没有 settings.json —— local_state_snapshot 改坏了")
+
+
 def main() -> int:
     base = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE
 
     checks = Checks(base)
     print(f"目标 {checks.base}")
     print(f"数据库 {load_paths().database}\n")
+
+    #: 会把本地文件弄丢的那一跑,先全部留个底。**在最外面留、而且只留这一次** ——
+    #: 这样不管后面哪一步炸了,`finally` 都能把它们还原回去(包括登录会话:清凭据会连带清掉它)。
+    #: 这里也是**唯一**写 `.flowbackup` 的地方:中途再留一次底的话,那一刻若文件已经坏了,
+    #: 好备份就会被坏内容覆盖 —— 实测踩过,人的凭据就是这么丢的。
+    local_before = local_state_snapshot()
+    settings_before, _settings_mode = settings_from_snapshot(local_before)
 
     try:
         clean_before(checks)
@@ -331,28 +476,64 @@ def main() -> int:
     before = counts()
     print(f"起始数量 {before}\n")
 
+    # **收尾永远要跑**,哪怕中间炸了。两件事都得保证做到:清掉这一跑留下的东西、把本地那几份
+    # 文件还原回去 —— 后者包含人真填过的凭据与登录会话(实测踩过:崩半路就把它们弄丢了)。
+    #
+    # **两层 `try/finally`,不是一层**:清理里那几个 `sweep_*` 自己也可能抛(数据库锁、文件占用),
+    # 而它们在原版里排在还原**前面** —— 一旦其中一个抛出来,执行流就直接离开 `finally`,
+    # **还原被跳过**。所以还原必须是最后一道、且不可跳过的保障,清理炸了也不能拦着它。
+    swept: list[str] = []
+    failed = ""
     try:
-        run(checks)
-        rate_limit_checks(checks)
-    except Stop as stop:
-        checks.check("流程能走完", False, str(stop))
+        try:
+            run(checks, local_before)
+            rate_limit_checks(checks)
+        except Stop as stop:
+            checks.check("流程能走完", False, str(stop))
+        except Exception as error:  # noqa: BLE001 — 验收脚本自己出错也要先把现场收拾干净
+            import traceback
 
-    # The run removes its own records; this clears the two vocabulary rows it cannot remove through the app.
-    swept = sweep_vocabulary()
-    swept += [f"covers/{name}" for name in sweep_covers("edition", COVER_EDITION_ID)]
-    swept += [f"covers/{name}" for name in sweep_covers("volume", COVER_VOLUME_ID)]
+            print("\n验收脚本自己崩了,下面是它的调用栈。**现场会照常清理、设置会照常还原。**\n")
+            traceback.print_exc()
+            checks.check("流程能走完", False, f"{type(error).__name__}: {error}")
+    finally:
+        try:
+            # The run removes its own records; this clears the two vocabulary rows it cannot remove through the app.
+            swept = sweep_vocabulary()
+            swept += [f"covers/{name}" for name in sweep_covers("edition", COVER_EDITION_ID)]
+            swept += [f"covers/{name}" for name in sweep_covers("volume", COVER_VOLUME_ID)]
+            swept += [f"covers/{name}" for name in sweep_covers("work", COVER_WORK_ID)]
+        except Exception as error:  # noqa: BLE001
+            failed = f"{type(error).__name__}: {error}"
+            print(f"\n收尾清理没做完({failed})。**不影响下面的还原** —— 库可能没回到起始状态。\n")
+        finally:
+            # ★ 这一句必须最后执行、且不可跳过:留底只在内存里,这里不还原就真没了。
+            restore_local_state(local_before)
+
+    # 旧版本会把留底抄一份 `.flowbackup` 放在数据目录里 —— 那等于长期多留一份明文密钥。
+    # 顺手清掉以前留下的。
+    for leftover in sweep_flow_backups():
+        print(f"清掉旧版本留下的 {leftover}")
+
     after = counts()
     checks.check(
         "库回到起始状态",
         after == before,
-        f"{before} -> {after}" + (f",清掉 {swept}" if swept else ""),
+        f"{before} -> {after}" + (f",清掉 {swept}" if swept else "") + (f",清理未完成:{failed}" if failed else ""),
+    )
+    restored_settings = settings_file()
+    checks.check(
+        "这一节动过的那份设置已经还原",
+        (restored_settings.read_text(encoding="utf-8") if restored_settings.is_file() else None)
+        == settings_before,
+        "跑验收不该改掉这台机器上真填过的东西",
     )
 
     print(f"\n{checks.passed} 项通过,{checks.failed} 项失败")
     return 1 if checks.failed else 0
 
 
-def run(checks: Checks) -> None:
+def run(checks: Checks, local_before: list[tuple]) -> None:
     """The flow itself: what is delivered, then the rules the API holds."""
 
     # 开始前 covers 目录里已有的文件,收尾时对照:该删的删了,不该删的一个都不许动。
@@ -562,6 +743,427 @@ def run(checks: Checks) -> None:
         "摘掉封面不动硬盘上的文件",
         len(cover_files("edition", edition_a)) == 2,
         f"硬盘上仍是 {cover_files("edition", edition_a)} —— 摘掉只是把数据库那一列清空",
+    )
+
+    # ---- 网页设置:存、只回掩码、清掉、以及「不通也不算错」的验证 -------------------
+    # **这一段会动 `settings.json`。** 留底与还原都由 `main()` 的 `finally` 统一管(那里连登录会话
+    # 与账号资料一起留),这里**只取用那份留底**。
+    #
+    # 先前这里又留了一次底,而那时可能已经晚了:留底写在函数中途,一旦那一刻文件已经被弄坏,
+    # 坏内容就会被当成"跑之前的样子" —— 实测就是这么把人的 Hikarinagi 凭据弄丢的。
+    # **留底只能有一个地方、而且必须是最早那一刻**,这是这一处的教训。
+    settings_before, _settings_mode = settings_from_snapshot(local_before)
+    #: 跑之前**这台机器上**是不是已经填过 Bangumi 令牌。验收脚本要能在任何一台机器上重跑:
+    #: 写死「一定没填过」的话,人一旦真填了令牌,这一节就会红 —— 那不是产品的毛病,是断言的毛病。
+    token_was_set = bool(load_source_settings().bangumi_token)
+
+    status, answer = checks.api("GET", "/api/settings")
+    checks.check(
+        "设置读得出来,而且「填没填」报的是实情",
+        status == 200 and field(answer, "bangumi_token_set") is token_was_set,
+        f"GET /api/settings -> {status}, 跑之前填过={token_was_set}, "
+        f"报的={field(answer, 'bangumi_token_set')}",
+    )
+
+    fake_token = "flow-check-abcdefghijklmnop"
+    status, answer = checks.api("PUT", "/api/settings", {"bangumi_token": fake_token})
+    checks.check(
+        "存下一个令牌之后,回话里说已经填了",
+        status == 200 and field(answer, "bangumi_token_set") is True,
+        f"PUT /api/settings -> {status}",
+    )
+    checks.check(
+        "回话里只有掩码,**没有完整令牌**",
+        fake_token not in str(answer) and "…" in str(field(answer, "bangumi_token_masked")),
+        f"掩码是 {field(answer, 'bangumi_token_masked')!r}",
+    )
+    checks.check(
+        "来历报的是网页这一份(而不是 config.toml)",
+        field(answer, "bangumi_token_from") == "settings",
+        f"from = {field(answer, 'bangumi_token_from')!r}",
+    )
+
+    status, answer = checks.api("GET", "/api/settings")
+    settings_on_disk = settings_file()
+    checks.check(
+        "再读一次仍是已填 —— 真的落盘了,不是只在这一次回话里",
+        field(answer, "bangumi_token_set") is True and settings_on_disk.is_file(),
+        f"{settings_on_disk.name} 在不在: {settings_on_disk.is_file()}",
+    )
+
+    status, answer = checks.api("PUT", "/api/settings", {"bangumi_token": "x" * 600})
+    checks.check(
+        "过长的令牌被拒,理由是一句话",
+        status == 400 and isinstance(field(answer, "detail"), str),
+        f"-> {status} {field(answer, 'detail')}",
+    )
+    status, answer = checks.api("PUT", "/api/settings", {"bangumi_token": "abc def"})
+    checks.check(
+        "令牌里夹空格被拒(多半是贴错了东西)",
+        status == 400,
+        f"-> {status} {field(answer, 'detail')}",
+    )
+
+    # 验证那一条:**网络通不通、令牌真不真,都算通过**。这一条考的是「它永远回 200,而且给得出一句人话」——
+    # 不能断言「一定说不对」:这台机器上可能填的是枚真令牌,那它就该说有效。(先前写死了「不对/连不上」那几个词,
+    # 于是人一旦真填了令牌,这一条就红 —— 断言的毛病,不是产品的。)
+    #
+    # **否定的那一半只要求"说清了是哪一类没成",不逐个列举措辞。** 先前只认「不对/连不上/没法/没有填」四个词,
+    # 而 Bangumi 偶尔回一个 429(实测:`令牌一时验不了:服务端说 429,过一会儿再试`),那句话一个都不沾 ——
+    # 于是这一条会红,红的却是网络的脾气。所以改成:要么说有效,要么说得出一句**提到失败原因**的话。
+    NOT_OK_WORDS = ("不对", "连不上", "没法", "没有填", "一时", "过一会儿", "服务端", "失败")
+    # 这一步**真的会联网**,所以先记下盘上那份账号资料现在在不在,再问。
+    # 理由:`check` 只在验通时写资料;网络一抖它就只回一句失败,资料原样不动。所以"跑完之后资料还在不在"
+    # 与"刚才那次通没通"无关 —— 该问的是「**这一步有没有把它弄丢**」,拿前后对比来问。
+    # (先前写成了"跑完必须有一份",于是令牌已被清掉、本来就该没有资料时反而报红 —— 断言的毛病。)
+    profile_before = profile_file("bangumi").is_file()
+    status, answer = checks.api("POST", "/api/settings/bangumi-token/check")
+    detail = str(field(answer, "detail") or "")
+    verdict = field(answer, "ok")
+    checks.check(
+        "验证令牌:不管通不通都回 200,而且给得出一句人话",
+        status == 200
+        and isinstance(verdict, bool)
+        and bool(detail)
+        and (("有效" in detail) if verdict else any(word in detail for word in NOT_OK_WORDS)),
+        f"POST .../check -> {status},ok={verdict},detail={detail!r}",
+    )
+    checks.check(
+        "**验不通也丢不了账号资料**:一次网络抖动不该把上次看到的那份抹掉",
+        profile_file("bangumi").is_file() == profile_before,
+        f"问之前 {profile_before},问之后 {profile_file('bangumi').is_file()}",
+    )
+
+    status, answer = checks.api("DELETE", "/api/settings")
+    checks.check(
+        "清掉之后回到「没填」",
+        status == 200
+        and field(answer, "bangumi_token_set") is False
+        and not settings_on_disk.exists(),
+        f"DELETE /api/settings -> {status}",
+    )
+
+    # ---- 成对凭据(Hikarinagi):收、只回掩码、拒半对、清得掉 -------------------
+    # 这一节会清掉凭据,而**清凭据会连带清掉登录会话与账号资料**(见 `settings_store.save_credentials`)。
+    # 那是有意的:会话里那枚 refresh token 是配着某个 client_id 发的,留着只会在下次请求时报难懂的错。
+    # 留底与还原由 `main()` 的 `finally` 统一管。
+    status, answer = checks.api("GET", "/api/settings")
+    listed = field(answer, "credentials") or []
+    entry = next((item for item in listed if field(item, "source") == "hikarinagi"), None)
+    checks.check(
+        "设置里列出了需要凭据的源,并写明了要哪几格",
+        status == 200
+        and entry is not None
+        and sorted((field(entry, "fields") or {}).keys()) == ["client_id", "client_secret"],
+        f"credentials = {json.dumps(listed, ensure_ascii=False)[:200]}",
+    )
+    checks.check(
+        "它现在报的是「还没配」,而且给得出说明",
+        field(entry, "configured") is False and bool(field(entry, "hint")),
+        f"configured={field(entry, 'configured')}",
+    )
+
+    fake_secret = "flow-check-secret-abcdef"
+    status, answer = checks.api(
+        "PUT",
+        "/api/settings",
+        {"source": "hikarinagi", "fields": {"client_id": "flow-check-id", "client_secret": fake_secret}},
+    )
+    entry = next(
+        (item for item in (field(answer, "credentials") or []) if field(item, "source") == "hikarinagi"),
+        None,
+    )
+    checks.check(
+        "存下凭据之后报「已配」",
+        status == 200 and entry is not None and field(entry, "configured") is True,
+        f"PUT /api/settings -> {status}",
+    )
+    checks.check(
+        "回话里只有掩码,**没有完整 secret**",
+        fake_secret not in json.dumps(answer, ensure_ascii=False)
+        and "…" in str(field(entry, "masked") or ""),
+        f"masked={field(entry, 'masked')!r}",
+    )
+
+    status, answer = checks.api(
+        "PUT", "/api/settings", {"source": "hikarinagi", "fields": {"client_id": "only-one"}}
+    )
+    checks.check(
+        "只填一格被拒(半对换不到令牌)",
+        status == 400 and isinstance(field(answer, "detail"), str),
+        f"-> {status} {field(answer, 'detail')}",
+    )
+    status, answer = checks.api("PUT", "/api/settings", {"source": "nobody", "fields": {}})
+    checks.check("不认识的源被拒", status == 404, f"-> {status}")
+
+    status, answer = checks.api(
+        "PUT",
+        "/api/settings",
+        {"source": "hikarinagi", "fields": {"client_id": "", "client_secret": ""}},
+    )
+    entry = next(
+        (item for item in (field(answer, "credentials") or []) if field(item, "source") == "hikarinagi"),
+        None,
+    )
+    checks.check(
+        "两个空串就是清掉",
+        status == 200 and entry is not None and field(entry, "configured") is False,
+        f"-> {status}",
+    )
+
+    # ---- VNDB 的令牌:一格、可选、而且当前版本还不会读它 ------------------------
+    # 这一节的要害是「有没有填」与「能不能用」必须分开报:VNDB 读公开条目不要凭据,
+    # 所以它 `configured` 从头到尾都是 true —— 哪怕那一格是空的。
+    status, answer = checks.api("GET", "/api/settings")
+    vndb_entry = next(
+        (item for item in (field(answer, "credentials") or []) if field(item, "source") == "vndb"),
+        None,
+    )
+    checks.check(
+        "VNDB 也在凭据清单里,而且只要一格 token",
+        status == 200
+        and vndb_entry is not None
+        and sorted((field(vndb_entry, "fields") or {}).keys()) == ["token"],
+        f"credentials = {json.dumps(field(answer, 'credentials'), ensure_ascii=False)[:200]}",
+    )
+    checks.check(
+        "VNDB 报的是「可选」,但**不再报「当前版本用不到」**",
+        field(vndb_entry, "optional") is True and field(vndb_entry, "noop") is False,
+        "填了可以按「验证」确认它是谁的 —— 所以那一格已经不是摆设了。"
+        f"optional={field(vndb_entry, 'optional')} noop={field(vndb_entry, 'noop')}",
+    )
+    status, answer = checks.api("POST", "/api/settings/vndb-token/check")
+    detail = str(field(answer, "detail") or "")
+    checks.check(
+        "VNDB 的验证端点:没填令牌时也回 200,而且说清是「还没填」",
+        status == 200 and field(answer, "ok") is False and "没有填" in detail,
+        f"-> {status} ok={field(answer, 'ok')} detail={detail!r}",
+    )
+    checks.check(
+        "**没填凭据的 VNDB 仍然报「能用」**",
+        field(vndb_entry, "configured") is True and field(vndb_entry, "masked") == "",
+        f"configured={field(vndb_entry, 'configured')} masked={field(vndb_entry, 'masked')!r}",
+    )
+
+    vndb_fake = "flow-check-vndb-token-abcdef"
+    status, answer = checks.api("PUT", "/api/settings", {"source": "vndb", "fields": {"token": vndb_fake}})
+    vndb_entry = next(
+        (item for item in (field(answer, "credentials") or []) if field(item, "source") == "vndb"),
+        None,
+    )
+    checks.check(
+        "VNDB 只给一格也存得下(它不像 Hikarinagi 那样要成对)",
+        status == 200 and vndb_entry is not None and field(vndb_entry, "configured") is True,
+        f"PUT /api/settings -> {status}",
+    )
+    checks.check(
+        "VNDB 这一格也只回掩码,不回完整令牌",
+        vndb_fake not in json.dumps(answer, ensure_ascii=False)
+        and "…" in str(field(vndb_entry, "masked") or ""),
+        f"masked={field(vndb_entry, 'masked')!r}",
+    )
+    status, answer = checks.api("PUT", "/api/settings", {"source": "vndb", "fields": {"token": ""}})
+    vndb_entry = next(
+        (item for item in (field(answer, "credentials") or []) if field(item, "source") == "vndb"),
+        None,
+    )
+    checks.check(
+        "清掉 VNDB 那一格之后,它**照样报「能用」**",
+        status == 200
+        and vndb_entry is not None
+        and field(vndb_entry, "masked") == ""
+        and field(vndb_entry, "configured") is True,
+        f"-> {status} configured={field(vndb_entry, 'configured')}",
+    )
+
+    # ---- Hikarinagi 的用户级登录:地址由后端拼、回调拒绝假 state -----------------
+    # 这一节只考「不登录那半边」:真正的登录要人在 Hikarinagi 页面上点一次同意,脚本做不了。
+    # 能自动验的是:地址拼得对不对、回调认不认 state、登出是不是幂等。
+    #
+    # **自己放一份假凭据再测**,而不是依赖"这台机器上恰好填过真的":
+    # 「登入地址拼不拼得出来」取决于有没有 client_id,靠机器实情的话,在一台没填过的机器上这一节
+    # 就永远测不到真正的拼装逻辑 —— 而那正是要测的东西。收尾会把真凭据原样放回去。
+    checks.api(
+        "PUT",
+        "/api/settings",
+        {"source": "hikarinagi", "fields": {"client_id": "flow-login-id", "client_secret": "flow-login-secret"}},
+    )
+
+    status, answer = checks.api("GET", "/api/sources/hikarinagi/login")
+    url = str(field(answer, "url") or "")
+    checks.check(
+        "登入地址由后端拼好,而且带上 PKCE 与 state",
+        status == 200
+        and url.startswith("https://id.hikarinagi.org/oidc/auth?")
+        and "code_challenge_method=S256" in url
+        and "code_challenge=" in url
+        and "state=" in url,
+        f"-> {status} url={url[:90]}",
+    )
+    checks.check(
+        "登入地址里的 scope 含 openid 与 offline_access",
+        "openid" in url and "offline_access" in url,
+        f"url={url[:170]}",
+    )
+    checks.check(
+        "**回调地址就是控制台里登记的那一串**",
+        "redirect_uri=http%3A%2F%2F127.0.0.1%3A8000%2Fapi%2Fsources%2Fhikarinagi%2Fcallback" in url,
+        "回调地址是代码里的常量,与控制台登记的那一串必须逐字符相同",
+    )
+    checks.check(
+        "**登录请求带 `prompt=consent`** —— 少了它服务端会复用旧授权,于是 offline_access 永远不生效",
+        "prompt=consent" in url,
+        f"url={url[:200]}",
+    )
+
+    status, page = checks.text("/api/sources/hikarinagi/callback?code=x&state=bogus")
+    checks.check(
+        "回调对不上 state 时**回的是给人看的 HTML**,不是 JSON",
+        status == 200 and "登录没成" in page,
+        f"-> {status} 片段={page[:80]!r}",
+    )
+
+    status, answer = checks.api("GET", "/api/settings")
+    checks.check(
+        "没登录时账号栏是空的,而且不是错误",
+        status == 200
+        and isinstance(field(answer, "hikarinagi_account"), dict)
+        and field(field(answer, "hikarinagi_account"), "logged_in") is False,
+        f"account={json.dumps(field(answer, 'hikarinagi_account'), ensure_ascii=False)}",
+    )
+
+    status, answer = checks.api("DELETE", "/api/sources/hikarinagi/login")
+    checks.check(
+        "退出登录在没登录时也成功(幂等)",
+        status == 200 and field(answer, "logged_in") is False,
+        f"-> {status}",
+    )
+
+    # 收尾的还原**不在这里**:`main()` 的 `finally` 会把设置、登录会话、账号资料一起放回去。
+    # 放在那儿的理由是脚本崩半路也得还原。**删掉登录会话的不是 `DELETE /api/settings`**(那个只删设置),
+    # 而是上面这两步:清空凭据时会 `forget_session()` / `forget_profile()`。
+
+    # ---- 两个源的「账号」区域 ---------------------------------------------------
+    # 两块都是**只读缓存、不联网**的展示:页面每次打开都去问一次服务端"我是谁"是没必要的往返。
+    status, answer = checks.api("GET", "/api/settings")
+    bangumi_account = field(answer, "bangumi_account")
+    checks.check(
+        "设置里带上了 Bangumi 的账号区域",
+        status == 200 and isinstance(bangumi_account, dict),
+        f"bangumi_account={json.dumps(bangumi_account, ensure_ascii=False)[:120]}",
+    )
+    checks.check(
+        "**账号区域里没有邮箱** —— /v0/me 回它,但我们不存",
+        "email" not in json.dumps(bangumi_account, ensure_ascii=False),
+        "少存一份用不上的个人信息,是不需要理由的",
+    )
+    # **公共的那几格**必须在三边都在。Hikarinagi 另外多了 `logged_in` 与两格"该往控制台填什么"
+    # (回调地址、scope),那是它独有的 —— 用子集断言,将来哪边多加一格都不会误报。
+    common = {"verified", "id", "name", "nickname", "avatar_url", "bio", "signature", "registered_at"}
+    hikarinagi_account = field(answer, "hikarinagi_account") or {}
+    vndb_account = field(answer, "vndb_account") or {}
+    checks.check(
+        "三个源的账号区域共用同一套公共键",
+        common <= set(bangumi_account or {})
+        and common <= set(hikarinagi_account)
+        and common <= set(vndb_account),
+        f"bangumi={sorted(bangumi_account or {})} vndb={sorted(vndb_account)} "
+        f"hikarinagi={sorted(hikarinagi_account)}",
+    )
+    checks.check(
+        "Hikarinagi 那两格「该往控制台填什么」也报出来了",
+        str(hikarinagi_account.get("redirect_uri") or "").startswith("http://127.0.0.1:")
+        and "openid" in str(hikarinagi_account.get("login_scope") or ""),
+        f"redirect_uri={hikarinagi_account.get('redirect_uri')!r} "
+        f"scope={hikarinagi_account.get('login_scope')!r}",
+    )
+
+    # ---- 「收不收起输入框」看的那一格 -------------------------------------------
+    # 页面只有一条判据:`verified`。它必须**如实**跟着状态走,否则要么验证过了输入框还摊着,
+    # 要么没验证就把输入框收起来(那样这一格就再也填不进去了)。
+    checks.check(
+        "这一跑没登录,所以 Hikarinagi 报的是「没验证」",
+        hikarinagi_account.get("logged_in") is False and hikarinagi_account.get("verified") is False,
+        f"logged_in={hikarinagi_account.get('logged_in')} verified={hikarinagi_account.get('verified')}",
+    )
+    checks.check(
+        "没验证过的源报 `verified` 为假,而且资料是空的那一份",
+        bangumi_account.get("verified") is False and bangumi_account.get("nickname") == "",
+        f"bangumi_account={json.dumps(bangumi_account, ensure_ascii=False)[:120]}",
+    )
+    # 换一枚令牌 = 上一个账号的资料不作数了。**这条是「能换账号」的前提**:留着旧资料,页面就会
+    # 一直收着输入框,人再也没法把新令牌填进去。
+    from app.settings_store import save_profile
+
+    # **这一份假资料必须自己收回去,不能指望 `main()` 那份留底。** 留底是"跑之前的样子",
+    # 只在最外面还原一次;而这里写下去的假资料**会先被中途的 GET/PUT 读走、也会留在盘上** ——
+    # 上一版就是靠外层留底收的,结果第二次连着跑时,第二次的留底已经把假资料当成"跑之前的样子",
+    # 于是人的真账号(昵称、ID)被这份 `424242` 顶掉了,页面上显示的是"上一个账号"。实测踩过。
+    bangumi_profile = profile_file("bangumi")
+    keep = bangumi_profile.read_text(encoding="utf-8") if bangumi_profile.is_file() else None
+    # 权限位也照原样带回去(这份文件与凭据同级,走 `_restore_path` 的"密钥路径一律收成 0600"那条)。
+    keep_mode = bangumi_profile.stat().st_mode if keep is not None else None
+    try:
+        save_profile("bangumi", {"id": 424242, "name": "flow-stale", "nickname": "上一个账号"})
+        status, answer = checks.api(
+            "PUT", "/api/settings", {"source": "vndb", "fields": {"token": "flow-swap-token"}}
+        )
+        checks.check(
+            "换一枚令牌之后,上次那份账号资料被忘掉了",
+            status == 200 and field(answer, "vndb_account", {}).get("verified") is False,
+            f"-> {status} vndb_account={json.dumps(field(answer, 'vndb_account'), ensure_ascii=False)[:120]}",
+        )
+        checks.check(
+            "**只**忘掉换过的那个源,别的源不动",
+            profile_file("bangumi").is_file(),
+            "换 VNDB 的令牌不该把 Bangumi 那边认下的账号也抹掉",
+        )
+        status, answer = checks.api("GET", "/api/settings")
+        checks.check(
+            "换过令牌之后 VNDB 那一格回到「没验证」,输入框才展得开",
+            status == 200
+            and field(answer, "vndb_account", {}).get("verified") is False
+            and field(answer, "vndb_account", {}).get("nickname") == "",
+            f"vndb_account={json.dumps(field(answer, 'vndb_account'), ensure_ascii=False)[:120]}",
+        )
+    finally:
+        if keep is None:
+            bangumi_profile.unlink(missing_ok=True)
+        else:
+            _write_text(bangumi_profile, keep)
+            _restore_path(bangumi_profile, keep_mode)
+    status, answer = checks.api(
+        "PUT", "/api/settings", {"source": "bangumi", "fields": {"client_id": "x", "client_secret": "y"}}
+    )
+    checks.check(
+        "不认识的源名换来 404 与一句人话,而不是 500",
+        status == 404 and isinstance(field(answer, "detail"), str),
+        f"-> {status} {field(answer, 'detail')}",
+    )
+
+    # 三个源都在,而且各自的「有没有凭据」与「没有时去哪儿配」都说得清楚。
+    status, listed = checks.api("GET", "/api/sources")
+    by_name = {str(field(item, "name")): item for item in (listed or [])}
+    checks.check(
+        "源清单里有 Hikarinagi",
+        status == 200 and "hikarinagi" in by_name,
+        f"-> {status} {sorted(by_name)}",
+    )
+    checks.check(
+        "每个源的说明与「有没有凭据」都齐",
+        all(field(item, "hint") and isinstance(field(item, "configured"), bool) for item in (listed or [])),
+        str([(field(item, "name"), field(item, "configured")) for item in (listed or [])]),
+    )
+    # **没凭据的源必须说得出「去哪儿配」**,有凭据的不该显那句话 —— 页面上那句提示就靠它。
+    checks.check(
+        "没凭据的源都给了「去哪儿配」",
+        all(field(item, "configure_hint") for item in (listed or []) if not field(item, "configured")),
+        str([(field(item, "name"), field(item, "configure_hint")) for item in (listed or [])]),
+    )
+    checks.check(
+        "不需要凭据的源不显那句话",
+        all(not field(item, "configure_hint") for item in (listed or []) if field(item, "configured")),
+        str([(field(item, "name"), field(item, "configure_hint")) for item in (listed or [])]),
     )
 
     # ---- 两种排法必须给出不同的顺序:按总标题的时间甲在前(甲最早 1900-01,乙 1900-02),
@@ -1197,6 +1799,25 @@ def run(checks: Checks) -> None:
     delete_work(checks, imported_work)
     checks.check("加入的那一条删干净了", row_id("work", "title", f"{PREFIX}丁") == 0)
 
+    # ---- 总标题自己的封面:与件、卷同一套规矩,但清理这一头曾经漏掉过它 -------------
+    # 传在删记录之前:这一条的图归**总标题**所有,删总标题时该跟着走(件与卷那两张在上一节已经验过)。
+    global COVER_WORK_ID
+    COVER_WORK_ID = work_a
+    status, answer = checks.upload(f"/api/works/{work_a}/cover", "work.png", TINY_PNG)
+    checks.check(
+        "总标题也收得下自己那张封面",
+        status == 200
+        and cover_files("work", work_a) == [f"work-{work_a}.png"]
+        and str(field(answer, "cover_url") or "").endswith(".png"),
+        f"POST /api/works/{work_a}/cover -> {status},硬盘上 {cover_files('work', work_a)}",
+    )
+    # 与件、卷不同的一处:`cover_url` 本来是「沿用第一件的封面」,总标题自己传过就该换成自己这张。
+    checks.check(
+        "传过之后总标题报的是自己这张,不再沿用第一件的",
+        field(checks.api("GET", f"/api/works/{work_a}")[1], "cover_url") == field(answer, "cover_url"),
+        f"回的是 {field(answer, 'cover_url')!r}",
+    )
+
     # ---- 删掉作品:作者与标签留下,连接跟着走 -----------------------------
     creators_kept, tags_kept = count("creator"), count("tag")
     delete_work(checks, work_a)
@@ -1215,7 +1836,12 @@ def run(checks: Checks) -> None:
         )[0][0]
         == 0,
     )
-    # 总标题删掉时,它下面几件作品、那些作品下的卷、以及它们的封面文件一起走。
+    # 总标题删掉时,它下面几件作品、那些作品下的卷、以及它们的封面文件一起走 —— 总标题自己那张也在内。
+    checks.check(
+        "连它自己的封面文件一起删了",
+        cover_files("work", COVER_WORK_ID) == [],
+        f"删掉总标题之后硬盘上是 {cover_files('work', COVER_WORK_ID)}",
+    )
     checks.check(
         "连它留下的封面文件一起删了",
         cover_files("edition", COVER_EDITION_ID) == [],

@@ -10,8 +10,9 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
-from app.sources.base import Candidate, Suggestion, VolumeDraft, WorkIdentity, snippet
-from app.sources.http import get_json, post_json
+from app.sources import family
+from app.sources.base import Candidate, SourceRelation, Suggestion, VolumeDraft, WorkIdentity, snippet
+from app.sources.http import get_json, get_json_with_status, post_json
 from app.config import load_source_settings
 from app.sources.query import flat
 
@@ -19,10 +20,15 @@ BASE = "https://api.bgm.tv"
 SEARCH_URL = f"{BASE}/v0/search/subjects"
 SUBJECT_URL = f"{BASE}/v0/subjects/{{id}}"
 RELATIONS_URL = f"{SUBJECT_URL}/subjects"
+#: 问「这个令牌是谁的」。**只用来验证令牌本身** —— 拿它当「能不能读到 NSFW」的判据并不成立:
+#: 令牌有效只说明身份对得上,某一类内容看不看得到是对方按条目自己决定的。
+ME_URL = f"{BASE}/v0/me"
 
 # 关系标签不总是 ``原作``:动画指向原作常写 ``书籍``,视觉小说改编写 ``游戏``;单行本、画集、番外篇、前传是相关条目,不收。
 ORIGIN_RELATIONS = {"原作", "书籍", "游戏"}
-IDENTITY_HOPS = 3
+# 加入时只看当前条目的一层直接来源关系。继续沿图遍历会把关系站自身的误连放大，
+# 也会把一次导入变成不可预测的全族搜索。
+IDENTITY_HOPS = 1
 
 # 职位与发行方:infobox 键名由编辑手写,一组一组地认。
 ROLE_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -60,8 +66,41 @@ class Bangumi:
     def __init__(self) -> None:
         self.token = load_source_settings().bangumi_token
 
+    def configured(self) -> bool:
+        """这个源现在能不能用 —— **有令牌才算**,没令牌它读不到 NSFW 那一类条目。
+
+        令牌走 `settings.json` 里那一格(见 `app/config.py` 的优先级),不在源凭据登记表里,
+        所以这一格只有 Bangumi 自己答得出来;页面与 `GET /api/sources` 都问这一处。
+        """
+        return self.token != ""
+
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.token}"} if self.token else {}
+
+    @staticmethod
+    def verify_token(token: str) -> tuple[bool, str, dict]:
+        """拿这个令牌去问「我是谁」。回 `(能不能用, 一句给人看的话, 这个账号的资料)`。
+
+        **只验证令牌本身**:`/v0/me` 通了就说明这个令牌有效。它不代表某一类条目一定读得到 ——
+        可达性由对方按条目决定,这里不替它下结论。
+
+        第三样东西是给设置页那块「账号」区域用的:昵称、头像、签名都在这一份里。**验证顺手就拿到了,
+        不必再请求一次。** 失败时是空字典。
+        """
+        token = token.strip()
+        if not token:
+            return False, "没有填令牌。", ""
+
+        answer, status = get_json_with_status(ME_URL, {"Authorization": f"Bearer {token}"})
+        if status == 200 and isinstance(answer, dict):
+            who = str(answer.get("nickname") or answer.get("username") or "").strip()
+            detail = f"令牌有效,对应 Bangumi 账号「{who}」。" if who else "令牌有效。"
+            return True, detail, _account_shape(answer)
+        if status in (401, 403):
+            return False, "Bangumi 说这个令牌不对(401)。检查有没有复制完整、或者它是不是已经撤销了。", ""
+        if status is None:
+            return False, "连不上 Bangumi,没法验证。网络通了再试,令牌已经填进去了。", ""
+        return False, f"Bangumi 回了 {status},没法确认这个令牌。", ""
 
     def search(self, keyword: str, limit: int = 8, bucket: str = "") -> list[Candidate]:
         body: dict = {"keyword": keyword}
@@ -149,6 +188,67 @@ class Bangumi:
             aliases=tuple(_infobox_values(entry.get("infobox"), "别名")),
         )
 
+    def relations_of(self, external_id: str) -> list[SourceRelation]:
+        """这一条在 Bangumi 上连到哪几条、各是什么关系(只读)。
+
+        `/v0/subjects/{id}/subjects` 回的每一项都带 `relation`(关系词)、`type`(目标那一类)与
+        `name` / `name_cn`,所以**分类在本地就能做完,不用为每一条再问一次上游** —— 这一点很要紧:
+        81467 那一条有二十来个关系,逐个 `fetch` 就是二十来次请求。
+
+        只缺 `platform`(画集与漫画在 `type` 上都是 1,只有 `platform` 分得出来),而那一项在关系表里
+        没有;**所以这里不猜**:拿不到 `platform` 时按 `type` 判,画集那一类会被 `guess_media` 判成
+        `None`,归到「需要确认」而不是悄悄并进同一作品。
+
+        **代价当场记下来**:轻小说 81467 被 `书籍` 边指向时,`candidate.media` 也是 `None` —— 光看关系表
+        分不出它是漫画还是轻小说。要分清就得对那几条各取一次条目,而那一次该由家族遍历那一层去做
+        (它知道哪些边值得补),不该在这里为每一条边都补。
+        """
+        answer = get_json(RELATIONS_URL.format(id=external_id), self._headers())
+        if not isinstance(answer, list):
+            return []
+
+        seed = self.fetch(external_id)
+        found: list[SourceRelation] = []
+        for item in answer:
+            if not isinstance(item, dict) or item.get("id") is None:
+                continue
+            target_id = str(item["id"])
+            title = str(item.get("name_cn") or item.get("name") or "")
+            media = guess_media(item.get("type"), item.get("platform"))
+            candidate = Candidate(
+                source=self.name,
+                external_id=target_id,
+                title=title,
+                original_title=item.get("name") or None,
+                kind=str(item.get("platform") or "") or None,
+                cover_url=_image(item),
+                media=media,
+            )
+            raw = str(item.get("relation") or "")
+            canonical, confidence, evidence = family.classify(
+                relation=raw,
+                seed_media=seed.media if seed else None,
+                seed_title=(seed.title or seed.original_title) if seed else None,
+                target_media=media,
+                target_kind=candidate.kind,
+                target_platform=str(item.get("platform") or "") or None,
+                target_title=title,
+            )
+            found.append(
+                SourceRelation(
+                    source=self.name,
+                    from_external_id=str(external_id),
+                    to_external_id=target_id,
+                    candidate=candidate,
+                    raw_relation=raw,
+                    canonical=canonical,
+                    direction="out",
+                    confidence=confidence,
+                    evidence=evidence,
+                )
+            )
+        return found
+
     def identity(self, external_id: str) -> WorkIdentity | None:
         """Walk conservative adaptation relations to a shared work title. Only the source-like labels
         above participate and title similarity picks among the many neighbours (soundtracks, guide
@@ -209,6 +309,11 @@ class Bangumi:
         date = (entry.get("date") or "").strip()
         if date and date != "0000-00-00":
             add("published_on", date, f"Bangumi 记的日期:{date}")
+
+        total = entry.get("total_episodes")
+        if isinstance(total, int) and total > 0:
+            add("volume_count", str(total), "Bangumi 条目集数")
+        add("subtype", str(entry.get("platform") or "") or None)
 
         for key in ORG_KEYS:
             value = _infobox_text(entry.get("infobox"), key)
@@ -412,6 +517,32 @@ def _pick_identity_relation(
 def _image(entry: dict) -> str | None:
     images = entry.get("images") or {}
     return images.get("large") or images.get("common") or images.get("medium") or None
+
+
+def _account_shape(profile: dict) -> dict:
+    """`/v0/me` 的原始资料 → 我们那一份缓存的形状。
+
+    **在这里就把形状定下来**:Bangumi 的头像在 `avatar` 里,是个 `{large, medium, small}` 对象;
+    Hikarinagi 那边叫 `avatar` 但内容是 `{src, width, height}` —— 不在这里拉平,页面就得为每个源
+    各写一遍取值逻辑。(先前照 Hikarinagi 的形状猜成 `images`,于是头像一直是空的 —— 实测才发现。)
+
+    **只取公开资料**:`/v0/me` 还回了 `email` 与 `user_group`,那两个不往缓存里写 ——
+    页面没地方显示它们,而"少存一份个人信息"是不需要理由的。
+    """
+    avatar = profile.get("avatar")
+    avatar_url = ""
+    if isinstance(avatar, dict):
+        avatar_url = str(avatar.get("large") or avatar.get("medium") or avatar.get("small") or "")
+    user_id = profile.get("id")
+    return {
+        "id": user_id,
+        "name": str(profile.get("username") or ""),
+        "nickname": str(profile.get("nickname") or ""),
+        "avatar_url": avatar_url,
+        "bio": "",
+        "signature": str(profile.get("sign") or ""),
+        "registered_at": str(profile.get("reg_time") or ""),
+    }
 
 
 def guess_media(entry_type: object, platform: object) -> str | None:

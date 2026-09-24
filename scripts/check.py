@@ -20,6 +20,7 @@ from app.api.sources import collect_from_sources  # noqa: E402
 from app.config import load_paths  # noqa: E402
 from app.db import create_db_engine  # noqa: E402
 from app.main import app as fastapi_app  # noqa: E402
+from app.search import build_entry, rank_match, rank_near_match, retry_keywords  # noqa: E402
 from app.sources import SOURCES  # noqa: E402
 from app.sources.base import Candidate  # noqa: E402
 from app.sources.bangumi import (  # noqa: E402
@@ -98,6 +99,14 @@ EXPECTED_TABLES = {
     "edition_tag",
     # 一条作品在外部站点上是哪一条。新建的表,已有的库启动时由 create_all 自动建出(只建缺的)。
     "external_ref",
+    # 作品与作品之间的**有方向**关系(前传 / 番外篇……)。旧的 `edition_relation` 是无向对子,放不下方向,
+    # 所以另起一张;两张并存,层级不同(作品级 / 载体级),不是同一件事的两种说法。
+    "work_relation",
+    # 一卷在外部站点上是哪一条。**与 `external_ref` 分开**:那一张的 `edition_id` 是 NOT NULL 的,
+    # 泛化它会让每一处读它的地方都先判一次「指向哪张表」,而绝大多数只想问作品级的对应。
+    "volume_external_ref",
+    # 统一作品的外部原作锚点。它与具体版本的 external_ref 分层，负责让后来导入的其他版本认回同一部作品。
+    "work_external_ref",
 }
 
 # (子表, 外键列, 父表, 删掉父记录时该做什么)
@@ -113,6 +122,12 @@ REFERENCE_RULES = (
     ("edition_tag", "tag_id", "tag", "NO ACTION"),
     # 外部条目是「这一条作品的注记」,不是共用词汇,跟着作品一起删。
     ("external_ref", "edition_id", "edition", "CASCADE"),
+    # 作品关系跟着任一边走:删掉一部作品,指向它的关系就不再有意义。
+    ("work_relation", "from_work_id", "work", "CASCADE"),
+    ("work_relation", "to_work_id", "work", "CASCADE"),
+    # 卷的外部对应是「这一卷的注记」,跟着卷一起删。
+    ("volume_external_ref", "volume_id", "volume", "CASCADE"),
+    ("work_external_ref", "work_id", "work", "CASCADE"),
 )
 
 # 复合主键就是防重复的那道墙
@@ -130,6 +145,7 @@ UNIQUE_COLUMN_GROUPS = (
     ("tag", ("media_type", "name")),
     # 同一个站上的同一条只许记一次 —— 判重就靠这个索引。
     ("external_ref", ("source", "external_id")),
+    ("work_external_ref", ("source", "external_id")),
 )
 
 # /api 这一层的接口清单。读的是 app.openapi(),不需要服务也不碰库 —— /docs 画的就是这份描述,
@@ -150,6 +166,7 @@ EXPECTED_API_ROUTES = {
     ("get", "/api/editions/{edition_id}"),
     ("put", "/api/editions/{edition_id}"),
     ("delete", "/api/editions/{edition_id}"),
+    ("post", "/api/editions/{edition_id}/open-local"),
     ("post", "/api/editions/{edition_id}/cover"),
     ("delete", "/api/editions/{edition_id}/cover"),
     ("get", "/api/editions/{edition_id}/volumes"),
@@ -178,15 +195,36 @@ EXPECTED_API_ROUTES = {
     ("post", "/api/sources/collect"),
     ("post", "/api/sources/resolve"),
     ("post", "/api/sources/identity"),
+    ("post", "/api/sources/counterparts"),
+    ("get", "/api/sources/work-claims"),
     ("post", "/api/sources/suggest"),
+    # 作品家族:顺着来源站的关系图走几步,**只读**返回一份草稿(用户确认前不落库)。
+    ("post", "/api/sources/family-preview"),
     ("get", "/api/editions/{edition_id}/source-refs"),
     ("put", "/api/editions/{edition_id}/source-refs"),
     ("delete", "/api/editions/{edition_id}/source-refs/{source}"),
+    # 网页设置:Bangumi 令牌存在数据目录里,不回显完整值。
+    ("get", "/api/settings"),
+    ("put", "/api/settings"),
+    ("delete", "/api/settings"),
+    # 拿现在这个令牌去问一句 Bangumi。**不通也是 200**,结论在响应体里。
+    ("post", "/api/settings/bangumi-token/check"),
+    # 拿 VNDB 那枚令牌去问一句「这是谁」。同样不通也回 200;这一格是可选的(VNDB 读公开条目不要令牌)。
+    ("post", "/api/settings/vndb-token/check"),
+    # Hikarinagi 的用户级登录。登入地址由后端拼(回调地址是代码里的常量,与控制台登记的要一致);
+    # 回调那一条**回的是 HTML 而不是 JSON** —— 打开它的是浏览器跳转,人正看着那一页。
+    ("get", "/api/sources/hikarinagi/login"),
+    ("get", "/api/sources/hikarinagi/callback"),
+    ("delete", "/api/sources/hikarinagi/login"),
 }
 
 
 # (表, 列) —— 这些列必须存在。自动建表不补列,给老库加过的列要在这里点名:少了它就是一次 500。
-EXPECTED_COLUMNS = (("edition", "published_on"),)
+EXPECTED_COLUMNS = (
+    ("edition", "published_on"), ("edition", "local_path"), ("edition", "ended_on"),
+    ("edition", "platforms"), ("edition", "organizations"), ("edition", "official_links"),
+    ("volume", "catalog_code"), ("volume", "page_count"), ("volume", "volume_type"),
+)
 
 # 载体时间的合法写法:2015、2015-04、2015-04-01;缺的那一段不许拿 0 顶上,否则「不知道几月」会变成具体月份。
 DATE_SHAPES = re.compile(r"^\d{4}(-\d{2}(-\d{2})?)?$")
@@ -396,7 +434,32 @@ def main() -> int:
         for method, path in sorted(declared - EXPECTED_API_ROUTES):
             print(f"       多了:{method.upper()} {path}")
 
-    # 每条路都要写清回什么,否则 /docs 上点得开却看不到形状。**204 是例外**:删除回的就是「没有身体」。
+    # ---- 两个搜索入口共用的认词与排序 --------------------------------------
+    search_entry = build_entry(
+        1,
+        [("标题", "无限斯特拉斯"), ("别名", "IS"), ("作者", "太宰治")],
+    )
+    check(
+        "标题少输入一段仍是正常命中",
+        bool(rank_match([search_entry], "无限")),
+    )
+    check(
+        "标题多输或错输一个字仍能在标题片段上容错",
+        bool(rank_near_match([search_entry], "无限的")),
+    )
+    check(
+        "作者名可以按拼音搜索",
+        bool(rank_match([search_entry], "taizaizhi")),
+    )
+    check(
+        "外部 API 搜不到错词时会准备较稳妥的短词补搜",
+        "无限" in retry_keywords("无限的"),
+    )
+
+    # 每条路都要写清回什么,否则 /docs 上点得开却看不到形状。
+    # **两种写法都算写清了**:回 JSON(缺省),或者自己声明了别的内容类型 ——
+    # Hikarinagi 那个回调就是后者:打开它的是浏览器跳转,人正看着那一页,所以它回的是 HTML。
+    # `204` 也例外:删除回的就是「没有身体」。
     undocumented = [
         f"{method.upper()} {path}"
         for path, operations in schema["paths"].items()
@@ -404,7 +467,10 @@ def main() -> int:
         for method, operation in operations.items()
         if not any(
             str(code).startswith("2")
-            and (str(code) == "204" or "application/json" in (answer.get("content") or {}))
+            and (
+                str(code) == "204"
+                or bool((answer.get("content") or {}))
+            )
             for code, answer in (operation.get("responses") or {}).items()
         )
     ]
@@ -683,14 +749,14 @@ def main() -> int:
             and fake_vndb.asked == [("CLANNAD", "vn")],
         )
         check(
-            "搜完的候选合成一张表,四种类型都在",
+            "搜完的候选按标题相关度排队,四种类型都在",
             [(item.external_id, item.media) for item in by_name.candidates]
             == [
                 ("51", "anime"),
-                ("48", "light_novel"),
-                ("149014", "manga"),
                 ("13", "game"),
                 ("v4", "game"),
+                ("149014", "manga"),
+                ("48", "light_novel"),
             ],
         )
         check(
@@ -733,9 +799,226 @@ def main() -> int:
             {keyword for keyword, _ in fake_bangumi.asked} == {"CLANNAD"}
             and {keyword for keyword, _ in fake_vndb.asked} == {"CLANNAD"},
         )
+
+        class FakeTypoSource:
+            name, label, prefers_cjk = "typo", "错字测试源", True
+            media_buckets = {"anime": "all"}
+
+            def __init__(self):
+                self.asked: list[tuple[str, str]] = []
+
+            def search(self, keyword, limit=8, bucket=""):
+                self.asked.append((keyword, bucket))
+                if keyword == "无限的":
+                    return [
+                        Candidate(
+                            source="typo",
+                            external_id="exact",
+                            title="无限的未知",
+                            media="anime",
+                        )
+                    ]
+                if keyword == "无限":
+                    return [
+                        Candidate(
+                            source="typo",
+                            external_id="is",
+                            title="无限斯特拉斯",
+                            media="anime",
+                        )
+                    ]
+                return []
+
+        fake_typo = FakeTypoSource()
+        SOURCES.clear()
+        SOURCES.update({"typo": fake_typo})
+        recovered = collect_from_sources(CollectIn(query="无限的"))
+        check(
+            "已有精确结果时仍补搜,近似结果排在精确结果之后",
+            fake_typo.asked == [("无限的", "all"), ("无限", "all")]
+            and [item.external_id for item in recovered.candidates] == ["exact", "is"]
+            and recovered.candidates[0].match_approximate is False
+            and recovered.candidates[1].match_approximate is True,
+        )
     finally:
         SOURCES.clear()
         SOURCES.update(real_sources)
+
+    # ---- 网页设置:掩码与优先级(纯函数,不碰库;走 HTTP 的那几条在 `scripts/flow.py` 里)--------
+    # **必须用一次性的数据目录**:这一段要真的写 `settings.json`,而 `load_source_settings()` 是每次现读的 ——
+    # 拿库真正的数据目录来试,就会把这一份自己的测试令牌留在人家的设置里。
+    # 目录用项目里的 `.tmp/`:`tempfile` 那套在清理时要 `chmod`,而本机这个沙箱不让(建虚拟环境时踩过同一个坑)。
+    import shutil
+    from pathlib import Path as _Path
+
+    from app.config import load_source_settings
+    from app.settings_store import (
+        forget_settings,
+        has_credentials,
+        load_saved_settings,
+        mask,
+        save_settings,
+        saved_credentials,
+        saved_fields,
+        saved_token,
+        settings_file,
+    )
+
+    check("空令牌的掩码是空串", mask("") == "")
+    check(
+        "掩码只留头尾:中间那段绝不出现",
+        "…" in mask("abcdefghijklmnopqrstuvwxyz")
+        and "efghijklmn" not in mask("abcdefghijklmnopqrstuvwxyz"),
+    )
+    check("掩码比原文短", len(mask("abcdefghijklmnopqrstuvwxyz")) < 26)
+
+    # 一个有凭据可填的源:它有哪几格、其中哪些是必须的。
+    from app.settings_store import CREDENTIALS, CREDENTIAL_FIELDS, CREDENTIAL_KEYS, save_credentials
+
+    check("每个有凭据的源都写明了那几格叫什么", set(CREDENTIAL_KEYS) <= set(CREDENTIAL_FIELDS))
+    check("两张表和后端的主表对得上", set(CREDENTIAL_KEYS) == set(CREDENTIALS) == set(CREDENTIAL_FIELDS))
+    check(
+        "Hikarinagi 要的是 client_id 与 client_secret",
+        [name for name, _label in CREDENTIAL_FIELDS.get("hikarinagi", ())] == ["client_id", "client_secret"],
+    )
+    check(
+        "VNDB 只有一格 token,而且是可选的",
+        [name for name, _label in CREDENTIAL_FIELDS.get("vndb", ())] == ["token"]
+        and CREDENTIALS["vndb"].optional is True,
+    )
+    check(
+        "存储键是显式写出来的,不是按源名拼的",
+        CREDENTIALS["vndb"].stored_keys() == ("vndb_token",)
+        and CREDENTIALS["hikarinagi"].stored_keys() == ("hikarinagi_client_id", "hikarinagi_client_secret"),
+    )
+
+    scratch = PROJECT_ROOT / ".tmp" / "check-settings"
+    shutil.rmtree(scratch, ignore_errors=True)
+    scratch.mkdir(parents=True, exist_ok=True)
+    real_config = paths.config_file
+    original = real_config.read_text(encoding="utf-8")
+    try:
+        real_config.write_text(
+            f'[paths]\ndata_dir = "{scratch.as_posix()}"\n\n[sources]\nbangumi_token = "FROM-CONFIG"\n',
+            encoding="utf-8",
+        )
+        check("设置文件落在数据目录下", settings_file().parent == scratch.resolve())
+
+        forget_settings()
+        check(
+            "只有 config.toml 有令牌时,用的是它",
+            load_source_settings().bangumi_token == "FROM-CONFIG",
+        )
+        check("来历报 config", load_source_settings().token_from == "config")
+
+        save_settings({"bangumi_token": "FROM-WEB"})
+        check(
+            "网页上填的盖过 config.toml 里那个",
+            load_source_settings().bangumi_token == "FROM-WEB",
+        )
+        check("来历报 settings", load_source_settings().token_from == "settings")
+        check("存进去就读得回来", saved_token() == "FROM-WEB")
+
+        # 成对凭据:半对不算数。
+        check("没存过时 has_credentials 为假", has_credentials("hikarinagi") is False)
+        save_settings({"hikarinagi_client_id": "only-id"})
+        check("只填了 id 时 has_credentials 仍为假", has_credentials("hikarinagi") is False)
+        check("只有半对时 saved_credentials 回两个空串", saved_credentials("hikarinagi") == ("", ""))
+        save_credentials("hikarinagi", {"client_id": "the-id", "client_secret": "the-secret"})
+        check("两格都填了才算配好", has_credentials("hikarinagi") is True)
+        check("取回来的是那一对", saved_credentials("hikarinagi") == ("the-id", "the-secret"))
+        save_credentials("hikarinagi", {"client_id": "", "client_secret": ""})
+        check("两个空串就是清掉", has_credentials("hikarinagi") is False)
+        stored = load_saved_settings()
+        check(
+            "清掉之后那两个键不在文件里了",
+            "hikarinagi_client_id" not in stored and "hikarinagi_client_secret" not in stored,
+        )
+
+        # VNDB:只有一格 token,而且**不填也算配好** —— 它读公开条目不要凭据,那一格是留给将来的同步功能的。
+        # 「有没有填」与「能不能用」在这里正式分家:两个问题各问各的函数。
+        check("VNDB 没填时 has_credentials 为假", has_credentials("vndb") is False)
+        save_credentials("vndb", {"token": "the-vndb-token"})
+        check("VNDB 只有一格也算配好了", has_credentials("vndb") is True)
+        check("VNDB 那一格取得回来", saved_fields("vndb").get("token") == "the-vndb-token")
+        check(
+            "VNDB 用的是自己的存储键",
+            load_saved_settings().get("vndb_token") == "the-vndb-token",
+        )
+        check("长度不一的凭据不能当二元组取", saved_credentials("vndb") == ("", ""))
+        save_credentials("vndb", {"token": ""})
+        check("VNDB 传空串就是清掉", has_credentials("vndb") is False)
+        check("清掉之后那个键不在文件里了", "vndb_token" not in load_saved_settings())
+
+        # 账号资料缓存:两个源共用一块地方,退出登录只删会话、不删"上次看到你是谁"。
+        from app.settings_store import (
+            forget_profile,
+            profile_file,
+            save_profile,
+            saved_profile_of,
+        )
+
+        check("没存过时账号资料是空的一份", saved_profile_of("bangumi") == {})
+        save_profile(
+            "bangumi",
+            {
+                "id": 1182021,
+                "name": "1182021",
+                "nickname": "叁拾玖",
+                "avatar_url": "https://lain.bgm.tv/pic/user/l/x.jpg",
+                "signature": "签名",
+                "registered_at": "2025-11-23T18:09:48+08:00",
+                # 故意塞两个**不该存**的键:`/v0/me` 会回邮箱与用户组,但那两样用不上。
+                "email": "someone@example.com",
+                "user_group": 10,
+            },
+        )
+        stored_profile = saved_profile_of("bangumi")
+        check("存下来的账号资料读得回来", stored_profile.get("nickname") == "叁拾玖")
+        check("头像与注册时间也在", bool(stored_profile.get("avatar_url")) and bool(stored_profile.get("registered_at")))
+        check(
+            "**白名单之外的键不落盘**(邮箱、用户组都没进来)",
+            "email" not in stored_profile and "user_group" not in stored_profile,
+        )
+        check(
+            "每个源一份文件,互不覆盖",
+            profile_file("bangumi") != profile_file("hikarinagi")
+            and profile_file("bangumi").name == "bangumi_profile.json",
+        )
+        save_profile("bangumi", {})
+        check("传空的一份就是删文件", not profile_file("bangumi").exists())
+        save_profile("hikarinagi", {"nickname": "另一个人"})
+        forget_profile("hikarinagi")
+        check("forget_profile 只清指定的那个源", saved_profile_of("hikarinagi") == {})
+
+        # 「收不收起输入框」那一格:三个源共用的账号形状里必须有 `verified`,而且它得是**默认假** ——
+        # 默认真的话,一个还没验证过的源在页面上会直接摆成"已连接",输入框从此展不开。
+        from app.api.schemas import AccountOut, HikarinagiAccountOut, SettingsOut
+
+        check(
+            "三个源共用的账号形状里有 `verified`,而且默认是假",
+            "verified" in AccountOut.model_fields
+            and AccountOut.model_fields["verified"].default is False,
+        )
+        check(
+            "Hikarinagi 的账号形状继承了它 —— 页面对三个源用同一条判据",
+            issubclass(HikarinagiAccountOut, AccountOut)
+            and "verified" in HikarinagiAccountOut.model_fields,
+        )
+        check(
+            "设置回话里三个源的账号区域都在",
+            {"hikarinagi_account", "bangumi_account", "vndb_account"} <= set(SettingsOut.model_fields),
+        )
+
+        forget_settings()
+        check(
+            "清掉网页那一份之后回落到 config.toml",
+            load_source_settings().bangumi_token == "FROM-CONFIG",
+        )
+        check("清掉是真的删文件", not settings_file().exists())
+    finally:
+        real_config.write_text(original, encoding="utf-8")
+        shutil.rmtree(scratch, ignore_errors=True)
 
     # ---- 限速 --------------------------------------------------------------
     # 桶的算法与「这个请求算谁的」都是纯函数,直接考它们,不需要服务也不碰库;**真发请求打到 429 的那几条在 `scripts/flow.py` 里**。
@@ -787,6 +1070,58 @@ def main() -> int:
                     if word in line:
                         print(f"       {word}: {line.strip()[:100]}")
                         break
+
+    # ---- 「这个源现在能不能用」只有一份答案 -------------------------------------
+    # 这一格是**页面与接口都要问的**,所以 `app/sources/__init__.py` 里那一个 `configured()` 必须
+    # 同时说对三种源:要凭据的没填就是不能用、不要凭据的永远能用、登记表里没有的源不许谎报能用。
+    # 实测踩过:把它改成「按凭据填了没有」算之后,VNDB 立刻被报成没配好(它那一格是可选的),
+    # 页面于是对着一个明明能用的源说缺凭据 —— 而那正是这个函数存在的理由。
+    from app.sources import configured
+
+    class _NeedsCredential:
+        name = "needs"
+
+        def configured(self) -> bool:
+            return False
+
+    class _NoCredential:
+        name = "free"
+
+        def configured(self) -> bool:
+            return True
+
+    class _SaysNothing:
+        name = "quiet"
+
+    kept = dict(SOURCES)
+    try:
+        SOURCES.clear()
+        SOURCES.update({"needs": _NeedsCredential(), "free": _NoCredential(), "quiet": _SaysNothing()})
+        check(
+            "要凭据的源:问它自己,它说不能就不能",
+            configured("needs") is False,
+        )
+        check(
+            "不要凭据的源:永远能用,不看填了几格",
+            configured("free") is True,
+        )
+        check(
+            "源答不出来时按凭据算,不回 True(把不知道说成能用就是撒谎)",
+            configured("quiet") is False,
+        )
+        check(
+            "登记表里没有的源也不谎报能用",
+            configured("nosuch") is False,
+        )
+    finally:
+        SOURCES.clear()
+        SOURCES.update(kept)
+
+    # 三个真的源各自都答得出这一格 —— 少一个,页面就会拿凭据数量去猜,而 VNDB 那一格是猜不对的。
+    silent = [name for name, source in kept.items() if not callable(getattr(source, "configured", None))]
+    check("三个真的源都自己答得出「能不能用」", not silent)
+    if silent:
+        print(f"       答不出的:{', '.join(sorted(silent))}")
 
     print(f"检查结束: {failures} 项失败")
     return 1 if failures else 0

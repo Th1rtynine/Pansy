@@ -7,7 +7,7 @@ import json
 
 from fastapi import HTTPException
 from sqlalchemy import delete, distinct, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.fields import media_fields, parse_aliases
 from app.models import (
@@ -18,7 +18,9 @@ from app.models import (
     EditionTag,
     Tag,
     Volume,
+    VolumeExternalRef,
     Work,
+    WorkRelation,
 )
 
 
@@ -432,7 +434,7 @@ def replace_tags(session: Session, edition: Edition, names: list[str]) -> None:
 
 
 def add_volumes(
-    session: Session, edition_id: int, entries: list[tuple[float | None, str | None, str | None]]
+    session: Session, edition_id: int, entries: list[tuple]
 ) -> tuple[int, int]:
     """Add volumes to one carrier, skipping numbers it already has; returns (added, skipped).
     An unnumbered volume is never a duplicate -- that is how SS or 上/下 is recorded, and several
@@ -442,7 +444,9 @@ def add_volumes(
         session.execute(select(Volume.volume_number).where(Volume.edition_id == edition_id)).scalars()
     )
     added = skipped = 0
-    for number, title, published_on in entries:
+    for entry in entries:
+        number, title, published_on, *extra = entry
+        summary, catalog_code, page_count, volume_type, local_path = (extra + [None] * 5)[:5]
         if number is not None and number in taken:
             skipped += 1
             continue
@@ -452,6 +456,11 @@ def add_volumes(
                 volume_number=number,
                 title=title,
                 published_on=published_on,
+                summary=summary,
+                catalog_code=catalog_code,
+                page_count=page_count,
+                volume_type=volume_type,
+                path=local_path,
             )
         )
         if number is not None:
@@ -565,3 +574,225 @@ def delete_edition_relation(session: Session, left: int, right: int) -> bool:
         )
     )
     return result.rowcount > 0
+
+
+def load_work_relations(session: Session, work_id: int) -> list[tuple[WorkRelation, Work, Work]]:
+    """所有牵到这一部作品的关系,连同两头那两部作品一起回:每一行是 `(关系, 从哪一部, 到哪一部)`。
+
+    **两个方向都要**:一条关系记的是「甲是乙的番外篇」,那么问甲时它在 `from` 那一侧,问乙时它在 `to`
+    那一侧 —— 只查一侧,「这一部有哪些衍生作」就会漏掉一半。
+
+    **`work` 要连两次,所以必须起别名**:同一条 SQL 里两次 `JOIN work` 而不过别名,`work.id` 就是
+    歧义的(SQLite 直接报 `ambiguous column name: work.id`)。实测踩过。
+    """
+    source_work = aliased(Work)
+    target_work = aliased(Work)
+    return list(
+        session.execute(
+            select(WorkRelation, source_work, target_work)
+            .join(source_work, source_work.id == WorkRelation.from_work_id)
+            .join(target_work, target_work.id == WorkRelation.to_work_id)
+            .where(
+                or_(
+                    WorkRelation.from_work_id == work_id,
+                    WorkRelation.to_work_id == work_id,
+                )
+            )
+            .order_by(WorkRelation.relation_type, WorkRelation.id)
+        ).all()
+    )
+
+
+def remember_work_relation(
+    session: Session,
+    *,
+    from_work_id: int,
+    to_work_id: int,
+    relation_type: str,
+    source: str,
+    raw_relation: str | None = None,
+    confidence: str = "unknown",
+    created_at: str | None = None,
+) -> WorkRelation:
+    """记下一条作品关系。**同一对、同一种关系、同一个来源只记一次**(重复调用是幂等的)。
+
+    幂等靠的是「先查后写」而不是「撞唯一索引再捕获」:后者在同一个事务里会把这一批前面写过的东西
+    一起回滚掉。规格也要求重复提交导入请求要幂等 —— 那一条最后落到的就是这里。
+
+    **方向不归一**:`a -> b` 与 `b -> a` 是两条不同的关系(谁是番外篇),所以这里绝不排序,
+    `add_edition_relation` 那种 `sorted()` 的做法在这张表上是错的。
+    """
+    row = session.execute(
+        select(WorkRelation).where(
+            WorkRelation.from_work_id == from_work_id,
+            WorkRelation.to_work_id == to_work_id,
+            WorkRelation.relation_type == relation_type,
+            WorkRelation.source == source,
+        )
+    ).scalar_one_or_none()
+    if row is not None:
+        # 已经记过:把新到的那点信息补上(原话、可信度可能比上次更准),但不新建一行。
+        if raw_relation:
+            row.raw_relation = raw_relation
+        if confidence != "unknown":
+            row.confidence = confidence
+        return row
+
+    row = WorkRelation(
+        from_work_id=from_work_id,
+        to_work_id=to_work_id,
+        relation_type=relation_type,
+        source=source,
+        raw_relation=raw_relation,
+        confidence=confidence,
+        created_at=created_at,
+    )
+    session.add(row)
+    return row
+
+
+def delete_work_relation(session: Session, relation_id: int) -> bool:
+    """删掉一条关系。**只删这一条**:两部作品都还在,各自的另一种关系也还在。"""
+    result = session.execute(delete(WorkRelation).where(WorkRelation.id == relation_id))
+    return result.rowcount > 0
+
+
+def load_volume_refs(session: Session, volume_ids: list[int]) -> dict[int, list[tuple[str, str]]]:
+    """这几卷各自在哪些来源上是哪一条:`卷 id → [(来源, 外部 id)]`,按来源排序。
+
+    **批量问,不按卷逐条问**:一部轻小说常有三四十卷,逐条问就是三四十次往返。
+    """
+    if not volume_ids:
+        return {}
+    found: dict[int, list[tuple[str, str]]] = {}
+    rows = session.execute(
+        select(VolumeExternalRef)
+        .where(VolumeExternalRef.volume_id.in_(volume_ids))
+        .order_by(VolumeExternalRef.volume_id, VolumeExternalRef.source)
+    ).scalars()
+    for row in rows:
+        found.setdefault(row.volume_id, []).append((row.source, row.external_id))
+    return found
+
+
+def remember_volume_ref(
+    session: Session,
+    volume_id: int,
+    source: str,
+    external_id: str,
+    *,
+    title: str | None = None,
+    url: str | None = None,
+) -> VolumeExternalRef | None:
+    """把「这一卷在那个站上是哪一条」记下来。**同一个站上的同一条只许记一次**。
+
+    已经被记到**别的卷**上时回 `None` 让调用方自己决定(与 `remember_ref` 的拒绝不同:那一处是
+    「有人已经认领了这条外部条目」的硬错误;这里多数是重跑同一份导入,所以按「先到先得、后来不动」
+    处理更省事,也仍然是幂等的)。
+    """
+    taken = session.execute(
+        select(VolumeExternalRef).where(
+            VolumeExternalRef.source == source,
+            VolumeExternalRef.external_id == external_id,
+        )
+    ).scalar_one_or_none()
+    if taken is not None:
+        # 已经在某一卷上了:同一条就补一补空格子,别的卷来的就什么都不做。
+        if taken.volume_id == volume_id:
+            if title and not taken.title:
+                taken.title = title
+            if url and not taken.url:
+                taken.url = url
+        return taken if taken.volume_id == volume_id else None
+
+    row = VolumeExternalRef(
+        volume_id=volume_id,
+        source=source,
+        external_id=external_id,
+        title=title,
+        url=url,
+    )
+    session.add(row)
+    return row
+
+
+def add_merged_volumes(session: Session, edition_id: int, merged) -> tuple[int, int, int]:
+    """把一份**已经合好的**卷写进这一件,连同它们各自的外部对应。回 `(新增, 跳过, 认回)`。
+
+    认卷的顺序:**先按外部 id 认回已有的那一行**,再按卷号。**认回来之后要把这次的来源补记上去** ——
+    这是跨来源合并能不能收敛的关键:上一次从 Bangumi 导进来,这一次又从 Hikarinagi 导同一卷,
+    应当补到那一行上、并多记一条来源,而不是新建第二行,也不是把它当成「已经有了」就丢掉。
+
+    `skipped` 现在恒为 0,留着是因为它仍是这个函数的第三种结局的位子(将来若有「认得出但不该动」
+    的情况);**卷号为空的卷不算重复**:SS、上/下 就是这么记的,几卷并存是对的。
+    """
+    from app.sources.volumes import MergedVolume
+
+    existing = {
+        row.id: row
+        for row in session.execute(select(Volume).where(Volume.edition_id == edition_id)).scalars()
+    }
+    #: (来源, 外部 id) → 已经在我们这儿的那一卷。
+    by_ref: dict[tuple[str, str], Volume] = {}
+    for volume_id, refs in load_volume_refs(session, list(existing)).items():
+        row = existing.get(volume_id)
+        if row is None:
+            continue
+        for ref in refs:
+            by_ref[ref] = row
+    #: 卷号 → 已有的那一卷。**靠它认出「同一个卷号、但这次是另一个来源」** ——
+    #: 认出来之后要把新来源的外部 id 补记上去,否则下次从那个来源导又认不出来。
+    by_number = {
+        row.volume_number: row for row in existing.values() if row.volume_number is not None
+    }
+
+    added = skipped = reused = 0
+    for entry in merged:
+        assert isinstance(entry, MergedVolume)
+        row = next((by_ref[ref] for ref in entry.refs if ref in by_ref), None)
+        if row is None and entry.number is not None:
+            row = by_number.get(entry.number)
+        if row is not None:
+            reused += 1
+            # 只补空格子:**不覆盖已有的说法**。
+            if row.title is None and entry.title:
+                row.title = entry.title
+            if row.published_on is None and entry.published_on:
+                row.published_on = entry.published_on
+            if row.summary is None and entry.summary:
+                row.summary = entry.summary
+            if row.catalog_code is None and entry.catalog_code:
+                row.catalog_code = entry.catalog_code
+            if row.page_count is None and entry.page_count is not None:
+                row.page_count = entry.page_count
+            if row.volume_type is None and entry.volume_type:
+                row.volume_type = entry.volume_type
+            if row.path is None and entry.local_path:
+                row.path = entry.local_path
+        else:
+            row = Volume(
+                edition_id=edition_id,
+                volume_number=entry.number,
+                title=entry.title,
+                published_on=entry.published_on,
+                summary=entry.summary,
+                catalog_code=entry.catalog_code,
+                page_count=entry.page_count,
+                volume_type=entry.volume_type,
+                path=entry.local_path,
+            )
+            session.add(row)
+            session.flush()
+            existing[row.id] = row
+            if entry.number is not None:
+                by_number[entry.number] = row
+            added += 1
+
+        for source, external_id in entry.refs:
+            # **认回来的那一行也要补记新来源** —— 这一句是跨来源合并能不能收敛的关键:
+            # 少了它,从 Bangumi 导过一次之后,再从 Hikarinagi 导同一卷就认不出来了。
+            if (source, external_id) not in by_ref:
+                remember_volume_ref(session, row.id, source, external_id, title=entry.title)
+            by_ref[(source, external_id)] = row
+
+    return added, skipped, reused

@@ -7,9 +7,10 @@ FastAPI 的 `/docs` 显示的正是这一组。
 from app.api.creators import router as creators
 from app.api.editions import router as editions
 from app.api.meta import router as meta
+from app.api.settings import router as settings
 from app.api.sources import router as sources
 from app.api.tags import router as tags
 from app.api.volumes import router as volumes
 from app.api.works import router as works
 
-API_ROUTERS = (works, editions, volumes, creators, tags, sources, meta)
+API_ROUTERS = (works, editions, volumes, creators, tags, sources, settings, meta)

@@ -30,6 +30,8 @@ class Candidate:
     series: bool = False
     # 别名。只有「按 id 取回一条」时才有(搜索不给)。不当搜索词(拿别名会搜到同名的别部作品),只用于人工确认。
     aliases: tuple[str, ...] = ()
+    # 这个具体版本在别的来源上的明确编号。只有来源自己给出映射时才有；绝不由标题猜。
+    external_refs: tuple[tuple[str, str], ...] = ()
 
     def titles(self) -> list[str]:
         """这一条的主要写法:标题与原名,不含别名。拿它去别的源搜。"""
@@ -61,6 +63,37 @@ class VolumeDraft:
     published_on: str | None = None
     summary: str | None = None
     cover_url: str | None = None
+    catalog_code: str | None = None
+    page_count: int | None = None
+    volume_type: str | None = None
+    local_path: str | None = None
+
+
+@dataclass(frozen=True)
+class SourceRelation:
+    """这一条在来源站上跟哪一条有关系,以及**那是一条什么关系**。
+
+    **来源各说各的,所以这里只收原话,不给它下结论**:`raw_relation` 是对方写的词(「原作」「不同版本」
+    「SEQUEL」),`canonical` 是照着 `app/sources/family.py` 那张表翻出来的三类之一。分类要拿**两边的
+    类型**一起判断(同一句「书籍」既可以是轻小说改编、也可以是画集),所以 `candidate.media` 与
+    `candidate.kind` 都得带着。
+
+    `evidence` 是给人看的一句话(「Bangumi 标记为动画改编」),`confidence` 分 high / low / unknown ——
+    **只有 high 才默认勾选**,其余进「需要确认」。
+    """
+
+    source: str
+    from_external_id: str
+    to_external_id: str
+    candidate: Candidate
+    raw_relation: str
+    #: SAME_WORK / VOLUME_OF / RELATED_WORK / UNKNOWN;由 `family.classify` 给。
+    canonical: str = "UNKNOWN"
+    #: 关系的方向 —— `out` = 从这一条指向对方,`in` = 对方指向这一条。
+    #: **番外篇、前传这些必须分得清方向**,合成一个无向对子就再也说不清谁是谁的衍生。
+    direction: str = "out"
+    confidence: str = "unknown"
+    evidence: str = ""
 
 
 @dataclass(frozen=True)
@@ -109,6 +142,18 @@ class Source(Protocol):
 
     def volumes_of(self, external_id: str) -> list[VolumeDraft]:
         """这一条底下的卷(只读);分不出「系列 / 卷」这一层的源回空表。卷不是候选,由我们自己的 `volume` 记,回先给人过目、可以改的草稿。
+        """
+        return []
+
+    def relations_of(self, external_id: str) -> list[SourceRelation]:
+        """这一条在来源站上连到哪几条,各是什么关系(只读)。
+
+        **跟 `volumes_of` 分开,不是同一条路的两种问法**:卷要的是「这一部底下的第几册」,关系要的是
+        「这一部跟别的那几部是什么关系」—— 前者进 `volume`,后者决定谁是同一个统一作品。
+
+        **默认回空表,和 `volumes_of` 一个待遇**:VNDB 只有「关联作品」没有跨媒体关系图,Hikarinagi 的
+        `/relations` 只挂在 galgame 下面 —— 它们没有这种关系不算缺陷,所以不给它们逼出一个假答案,
+        家族归组到时候少一个来源即可(见 `app/sources/family.py` 的开头)。
         """
         return []
 

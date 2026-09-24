@@ -17,7 +17,7 @@ from app.queries import (
     load_work_search_values,
     load_work_start_dates,
 )
-from app.search import build_entry, match, near_match
+from app.search import build_entry, rank_match, rank_near_match
 
 
 # 列表能按什么排,以及界面上叫什么;第一档是默认。
@@ -73,7 +73,9 @@ def select_works(session: Session, keyword: str, sort: str, page: int) -> Page:
     """One row per work, for 全部 (and the API's /works): a work with no 作品 still
     arrives as one row, so nothing drops out."""
     sorting = sort if sort in WORK_SORT_VALUES else WORK_SORT_VALUES[0]
-    rows, work_hits, edition_hits, approximate = _narrow(session, keyword)
+    rows, work_hits, edition_hits, work_scores, edition_scores, approximate = _narrow(
+        session, keyword
+    )
 
     # 时间每一档都要读:行里要打印它,而且默认就按它显示。
     start_dates = load_work_start_dates(session)
@@ -87,7 +89,14 @@ def select_works(session: Session, keyword: str, sort: str, page: int) -> Page:
     ordered: list[WorkRow] = []
     for work, editions in sorted(
         by_work.values(),
-        key=lambda item: sort_key(sorting, item[0], None, start_dates.get(item[0].id)),
+        key=lambda item: _ranked_sort_key(
+            keyword,
+            max(
+                work_scores.get(item[0].id, 0),
+                max((edition_scores.get(edition.id, 0) for edition in item[1]), default=0),
+            ),
+            sort_key(sorting, item[0], None, start_dates.get(item[0].id)),
+        ),
     ):
         # 作品名命中时全部作品都回来了,名字是作品的;只有部分作品命中时,名字是那些
         # 作品自己的。
@@ -124,9 +133,11 @@ def select_editions(
     """
     sorting = sort if sort in WORK_SORT_VALUES else WORK_SORT_VALUES[0]
     chosen = media_type if media_type in MEDIA_TYPE_VALUES else ""
-    rows, work_hits, edition_hits, approximate = _narrow(session, keyword)
+    rows, work_hits, edition_hits, work_scores, edition_scores, approximate = _narrow(
+        session, keyword
+    )
 
-    members: list[tuple[Work, Edition, list[str]]] = []
+    members: list[tuple[Work, Edition, list[str], int]] = []
     for kind, group in split_by_media_type(
         rows, lambda row: {row[1].media_type} if row[1] is not None else set()
     ):
@@ -134,16 +145,29 @@ def select_editions(
             continue
         for work, edition in group:
             kinds = work_hits.get(work.id) or edition_hits.get(edition.id, [])
-            members.append((work, edition, list(dict.fromkeys(kinds))))
+            members.append(
+                (
+                    work,
+                    edition,
+                    list(dict.fromkeys(kinds)),
+                    max(work_scores.get(work.id, 0), edition_scores.get(edition.id, 0)),
+                )
+            )
 
     # 这一行是一份作品,按它自己的时间排:2015 年的漫画,它的动画不是 2015 年的。
-    members.sort(key=lambda row: sort_key(sorting, row[0], row[1], row[1].published_on))
+    members.sort(
+        key=lambda row: _ranked_sort_key(
+            keyword,
+            row[3],
+            sort_key(sorting, row[0], row[1], row[1].published_on),
+        )
+    )
 
     window, current, pages = _cut(len(members), page)
     return Page(
         rows=[
             EditionRow(work=work, edition=edition, matched_by=kinds)
-            for work, edition, kinds in members[window]
+            for work, edition, kinds, _score in members[window]
         ],
         total=len(members),
         page=current,
@@ -171,14 +195,19 @@ def sort_key(
     return (work.title, edition.id if edition is not None else 0)
 
 
+def _ranked_sort_key(keyword: str, score: int, secondary: tuple) -> tuple:
+    """搜索时先按相关度,再尊重人选的标题/时间排序;普通列表完全沿用旧顺序。"""
+    return (-score, *secondary) if keyword else secondary
+
+
 def _narrow(session: Session, keyword: str):
     """The rows a keyword leaves, and what it hit on each of the two levels.
-    命中作品名带出它的全部作品;只命中某一份作品(作者、标签)就只带出那一份。拼写兜底只
-    在两级都没有精确命中时问一次 —— 分级去问会让作品名上的近似命中盖掉作者上的精确命中。
+    命中作品名带出它的全部作品;只命中某一份作品(作者、标签)就只带出那一份。标准命中与容错
+    命中一起返回,但前者分数更高;因此作者上的精确命中不会被作品名上的近似命中盖掉。
     """
     if not keyword:
         # None, not []: no narrowing at all. [] would mean 「narrow to nothing」.
-        return load_edition_rows(session, None, None), {}, {}, False
+        return load_edition_rows(session, None, None), {}, {}, {}, {}, False
 
     work_entries = [
         build_entry(row_id, values) for row_id, values in load_work_search_values(session)
@@ -186,18 +215,30 @@ def _narrow(session: Session, keyword: str):
     edition_entries = [
         build_entry(row_id, values) for row_id, values in load_edition_search_values(session)
     ]
-    work_hits = match(work_entries, keyword)
-    edition_hits = match(edition_entries, keyword)
-    approximate = False
-    if not work_hits and not edition_hits:
-        work_hits = near_match(work_entries, keyword)
-        edition_hits = near_match(edition_entries, keyword)
-        approximate = bool(work_hits or edition_hits)
+    exact_works = rank_match(work_entries, keyword)
+    exact_editions = rank_match(edition_entries, keyword)
+
+    def with_nearby(exact: list, nearby: list) -> list:
+        found = {hit.row_id: hit for hit in exact}
+        for hit in nearby:
+            found.setdefault(hit.row_id, hit)
+        return sorted(found.values(), key=lambda hit: (-hit.score, hit.row_id))
+
+    ranked_works = with_nearby(exact_works, rank_near_match(work_entries, keyword))
+    ranked_editions = with_nearby(exact_editions, rank_near_match(edition_entries, keyword))
+    approximate = not exact_works and not exact_editions and bool(
+        ranked_works or ranked_editions
+    )
+
+    work_hits = {hit.row_id: list(hit.kinds) for hit in ranked_works}
+    edition_hits = {hit.row_id: list(hit.kinds) for hit in ranked_editions}
+    work_scores = {hit.row_id: hit.score for hit in ranked_works}
+    edition_scores = {hit.row_id: hit.score for hit in ranked_editions}
 
     # [] 是「缩到空」,None 是「不缩」:没找到东西必须传 [],否则整个库都会回来,
     # 而页面写着 未找到。
     rows = load_edition_rows(session, list(edition_hits), list(work_hits))
-    return rows, work_hits, edition_hits, approximate
+    return rows, work_hits, edition_hits, work_scores, edition_scores, approximate
 
 
 def _cut(total: int, page: int) -> tuple[slice, int, int]:

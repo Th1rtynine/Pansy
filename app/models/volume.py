@@ -25,6 +25,9 @@ class Volume(Base):
     # 「2006-05」、「2006-05-24」都合法)。从源里读一个系列底下的卷时,每一条单行本
     # 自己就带着它(例如 `Fate/stay night (01)` = 2006-05-24)。
     published_on: Mapped[str | None] = mapped_column(String)
+    catalog_code: Mapped[str | None] = mapped_column(String)
+    page_count: Mapped[int | None] = mapped_column(Integer)
+    volume_type: Mapped[str | None] = mapped_column(String)
     cover_path: Mapped[str | None] = mapped_column(String)
     cover_width: Mapped[int | None] = mapped_column(Integer)
     cover_height: Mapped[int | None] = mapped_column(Integer)

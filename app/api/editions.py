@@ -4,7 +4,14 @@ number already in use, and the four link refusals from `app/rules.py`; only the 
 of a paragraph). The type is not editable (see update_edition); 作品总标题's three fields go through `/api/works/{id}`.
 """
 
-from fastapi import APIRouter, File, HTTPException, Response, UploadFile
+import ipaddress
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app import covers
@@ -96,6 +103,8 @@ def create_edition(work_id: int, body: EditionIn) -> EditionOut:
             release_status=body.release_status.strip() or None,
             volume_count=body.volume_count,
             published_on=published_on,
+            **_archive_values(body),
+            local_path=body.local_path.strip() or None,
         )
         session.add(edition)
         session.flush()
@@ -118,6 +127,44 @@ def show_edition(edition_id: int) -> EditionOut:
     return answer
 
 
+@router.post("/editions/{edition_id}/open-local")
+def open_local_resource(edition_id: int, request: Request) -> dict[str, str | bool]:
+    """Open a recorded file/directory/application on this machine only.
+
+    A stored path is data, never a shell command: it must resolve to an existing filesystem entry and
+    is passed directly to the OS opener without shell parsing.
+    """
+    forwarded = request.headers.get("x-forwarded-for", "").split(",", 1)[0].strip()
+    host = forwarded or (request.client.host if request.client else "")
+    try:
+        local = ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        local = False
+    if not local:
+        raise HTTPException(status_code=403, detail="只有本机可以打开本地资源。")
+
+    with session_scope() as session:
+        edition = get_edition_or_404(session, edition_id)
+        raw = (edition.local_path or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="这份作品还没有填写本地资源路径。")
+    try:
+        target = Path(raw).expanduser().resolve(strict=True)
+    except (OSError, RuntimeError):
+        raise HTTPException(status_code=400, detail="找不到这个本地资源，请检查路径。")
+
+    try:
+        if sys.platform == "win32":
+            os.startfile(str(target))  # type: ignore[attr-defined]
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(target)])
+        else:
+            subprocess.Popen(["xdg-open", str(target)])
+    except OSError as failure:
+        raise HTTPException(status_code=400, detail=f"没能打开这个本地资源：{failure}") from failure
+    return {"ok": True, "detail": "已交给系统打开。"}
+
+
 @router.put("/editions/{edition_id}", response_model=EditionOut)
 def update_edition(edition_id: int, body: EditionIn) -> EditionOut:
     """Write this 作品's fields, creators and tags back. **The media type in the body is ignored; the one on
@@ -133,6 +180,9 @@ def update_edition(edition_id: int, body: EditionIn) -> EditionOut:
         edition.release_status = body.release_status.strip() or None
         edition.volume_count = body.volume_count
         edition.published_on = _published_on(body, edition.media_type)
+        for key, value in _archive_values(body).items():
+            setattr(edition, key, value)
+        edition.local_path = body.local_path.strip() or None
 
         replace_creators(session, edition, _creator_pairs(body))
         replace_tags(session, edition, clean_names(body.tags))
@@ -217,6 +267,36 @@ def _full(session: Session, edition: Edition, work: Work) -> EditionOut:
     )
 
 
+def _archive_values(body: EditionIn) -> dict[str, object]:
+    """Normalize the edition-owned archive fields for both direct edits and imports."""
+    clean = lambda value: value.strip() or None
+    organizations = [
+        {"name": item.name.strip(), "role": item.role.strip()}
+        for item in body.organizations
+        if item.name.strip()
+    ]
+    links = [
+        {"label": item.label.strip() or "入口", "url": item.url.strip()}
+        for item in body.official_links
+        if item.url.strip()
+    ]
+    return {
+        "ended_on": clean(body.ended_on),
+        "subtype": clean(body.subtype),
+        "region": clean(body.region),
+        "language": clean(body.language),
+        "catalog_code": clean(body.catalog_code),
+        "homepage": clean(body.homepage),
+        "engine": clean(body.engine),
+        "audience": clean(body.audience),
+        "reading_mode": clean(body.reading_mode),
+        "content_notice": clean(body.content_notice),
+        "platforms": json.dumps(clean_names(body.platforms), ensure_ascii=False),
+        "organizations": json.dumps(organizations, ensure_ascii=False),
+        "official_links": json.dumps(links, ensure_ascii=False),
+    }
+
+
 def _creator_pairs(body: EditionIn) -> list[tuple[str, str]]:
     """The body's creator list as the (name, role) pairs the writers expect; a name or role of only spaces is refused in the page's 「名字 角色」 words."""
     for link in body.creators:
@@ -237,7 +317,7 @@ def _published_on(body: EditionIn, media_type: str) -> str | None:
 
 
 # ---- 封面 -------------------------------------------------------------------
-# 规矩(先写文件再改库、不覆盖旧文件、不删硬盘上的文件、格式按内容认)在 app/covers.py,这里只收上传、交出拒绝的话。
+# 规矩(先写文件再改库、不覆盖旧文件、换封面与摘封面都不动硬盘、删记录才按文件名清、格式按内容认)在 app/covers.py,这里只收上传、交出拒绝的话。
 
 
 @router.post("/editions/{edition_id}/cover", response_model=EditionOut, tags=["作品"])

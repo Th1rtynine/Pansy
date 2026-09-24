@@ -15,11 +15,12 @@ withDefaults(
     /** 一句话说明这一页在做什么;不写就不显示。 */
     description?: string;
     saving?: boolean;
+    submitDisabled?: boolean;
     submitLabel?: string;
     cancelTo: string;
     cancelLabel?: string;
   }>(),
-  { title: "", description: "", saving: false, submitLabel: "保存", cancelLabel: "取消" },
+  { title: "", description: "", saving: false, submitDisabled: false, submitLabel: "保存", cancelLabel: "取消" },
 );
 
 defineEmits<{ submit: [] }>();
@@ -40,7 +41,7 @@ defineEmits<{ submit: [] }>();
       <slot />
 
       <div class="flex flex-wrap items-center gap-3 border-t border-line pt-5">
-        <Button type="submit" variant="solid" tone="accent" :loading="saving">
+        <Button type="submit" variant="solid" tone="accent" :loading="saving" :disabled="submitDisabled">
           {{ submitLabel }}
         </Button>
         <RouterLink :to="cancelTo">

@@ -12,6 +12,7 @@ import { Heading, Tag, Text } from "../ui";
 import InfoPanel from "./InfoPanel.vue";
 import VolumeCard from "./VolumeCard.vue";
 import type { EditionOut } from "../types";
+import { archiveFieldsOf, hasPlatforms } from "../archiveFields";
 
 const props = defineProps<{ edition: EditionOut }>();
 
@@ -41,6 +42,10 @@ const panelRows = computed(() => {
   push(fields.value.org, edition.org);
   push(fields.value.status, edition.release_status);
   push(fields.value.count, edition.volume_count);
+  for (const field of archiveFieldsOf(edition.media_type)) push(field.label, edition[field.key]);
+  if (hasPlatforms(edition.media_type)) push("运行 / 播放平台", edition.platforms.join("、"));
+  push("参与机构", edition.organizations.map((item) => `${item.name}${item.role ? `（${item.role}）` : ""}`).join("、"));
+  if (edition.local_path) push("本地资源", edition.local_path);
   if (edition.volumes.length) push(`收录${volumeWord.value}`, edition.volumes.length);
   if (edition.creators.length) push("作者", `${edition.creators.length} 位`);
   if (edition.tags.length) push("标签", `${edition.tags.length} 个`);
@@ -92,6 +97,10 @@ const panelRows = computed(() => {
 
     <div class="shrink-0 lg:w-64">
       <InfoPanel :rows="panelRows">
+        <div v-if="edition.official_links.length || edition.homepage" class="mb-2 flex flex-wrap gap-2 text-sm">
+          <a v-if="edition.homepage" class="text-accent-text" :href="edition.homepage" target="_blank" rel="noreferrer">官网 ↗</a>
+          <a v-for="link in edition.official_links" :key="link.url" class="text-accent-text" :href="link.url" target="_blank" rel="noreferrer">{{ link.label || "入口" }} ↗</a>
+        </div>
         <RouterLink class="text-sm text-accent-text" :to="`/works/${edition.work_id}`">
           回到《{{ edition.work_title }}》 →
         </RouterLink>

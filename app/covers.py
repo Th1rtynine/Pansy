@@ -1,6 +1,6 @@
 """封面:认上传的文件、起名字、写到 `data/covers/` 下。
 
-作品 `edition`、卷 `volume`、总标题 `work` 三种封面规矩一样,只有文件名分得出来(见 `KIND_*`)。
+作品 `edition`、卷 `volume`、总标题 `work` 三种封面规矩一样,只有文件名分得出来(见 `KIND_*` / `KINDS`)。
 **先写文件再改数据库**(失败宁可多一个没人引用的文件)、**不覆盖旧文件**(换一张写 `edition-1.v2.jpg`)。
 **删记录才删文件**:摘掉或更换只动那一列,按文件名 `edition-16.*` 认,只删程序自己写进 `data/covers/` 的。
 """
@@ -26,11 +26,14 @@ JPEG_SIZE_MARKERS = frozenset(range(0xC0, 0xD0)) - {0xC4, 0xC8, 0xCC}
 REFUSAL_TOO_BIG = "封面不能超过 8 MB。"
 REFUSAL_NOT_IMAGE = "封面只收 JPEG、PNG、WebP 或 GIF 图片。"
 
-#: 封面挂在哪一种记录上,同时是文件名的前缀(`edition-1.jpg`):闭集,多一种要一起想文件名与清理。
+#: 封面挂在哪一种记录上,同时是文件名的前缀(`edition-1.jpg`):三种规矩一样,只有文件名分得出来。
 KIND_EDITION = "edition"
 KIND_VOLUME = "volume"
 #: 作品总标题自己的封面,文件名因此是 `work-3.jpg`。
 KIND_WORK = "work"
+#: 认得的那几种,写文件与删文件都照这个集合收口 —— **加一种封面就得在这里加一项**,漏了会让
+#: 落盘的那一头写得出来、清理的那一头把它当成没听说过的东西放过。
+KINDS = frozenset({KIND_EDITION, KIND_VOLUME, KIND_WORK})
 
 
 class CoverRefused(Exception):
@@ -144,8 +147,10 @@ def covers_dir() -> Path:
 
 def next_name(kind: str, row_id: int, extension: str) -> str:
     """这一条记录下一个可用的文件名:第一次 `edition-1.jpg`,换一张 `edition-1.v2.jpg`,
-    **版本号从硬盘上现有的文件数出来,不存数据库**。
+    **版本号从硬盘上现有的文件数出来,不存数据库**。名字里只有 `KINDS` 里那几种前缀。
     """
+    if kind not in KINDS:
+        raise ValueError(f"不认识的封面类型 {kind!r},只认 {sorted(KINDS)}")
     taken = {path.name for path in covers_dir().glob(f"{kind}-{row_id}.*")}
     plain = f"{kind}-{row_id}.{extension}"
     if plain not in taken:
@@ -187,9 +192,11 @@ def url_of(cover_path: str | None) -> str | None:
 def remove_row_covers(kind: str, row_id: int) -> list[str]:
     """把这一条记录名下的封面文件全删掉,回它删掉的文件名。**按文件名认**(`edition-16.*`),不看数据库
     那一列:换封面留下的旧版本、摘掉封面后没人指着的那一张,照着那一列是找不到的。只有硬删记录会走到
-    这里;**删不掉不算错**(文件不在或被占着)。"""
-    if kind not in (KIND_EDITION, KIND_VOLUME):
-        return []
+    这里;**删不掉不算错**(文件不在或被占着)。`kind` 是 `KINDS` 里那三种之一 —— 总标题的
+    `work-3.*` 也在内,`DELETE /api/works/{id}` 就是靠这一条把总标题自己那张图收走的。
+    """
+    if kind not in KINDS:
+        raise ValueError(f"不认识的封面类型 {kind!r},只认 {sorted(KINDS)}")
     removed = []
     for path in sorted(covers_dir().glob(f"{kind}-{row_id}.*")):
         try:

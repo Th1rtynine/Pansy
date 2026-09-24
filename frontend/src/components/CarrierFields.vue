@@ -5,10 +5,11 @@
  * 「游戏没有卷也没有数量」表现为那一段不出现。
  * 类型下拉只在新建时为真(`showType`):类型定了这一份有哪些字段,建好之后不能改。
  */
-import { Input, NumberInput, FormField, Select, TagsInput, Textarea } from "../ui";
+import { Button, Input, NumberInput, FormField, Select, TagsInput, Textarea } from "../ui";
 
 import type { EditionIn } from "../types";
 import { mediaTypes } from "../mediaTypes";
+import { archiveFieldsOf, hasPlatforms } from "../archiveFields";
 import CreatorRows from "./CreatorRows.vue";
 
 const form = defineModel<EditionIn>({ required: true });
@@ -65,6 +66,44 @@ const typeOptions = () => mediaTypes.value.map((item) => ({ value: item.value, l
 
     <FormField v-if="spec.count" :label="spec.count">
       <NumberInput v-model="form.volume_count" :min="0" />
+    </FormField>
+
+    <details class="rounded-panel border border-line bg-surface-soft p-4">
+      <summary class="cursor-pointer text-sm text-muted">更多档案</summary>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <FormField v-for="field in archiveFieldsOf(form.media_type)" :key="field.key" :label="field.label">
+          <Input v-model="form[field.key]" :placeholder="field.placeholder" />
+        </FormField>
+      </div>
+      <div class="mt-4 flex flex-col gap-4">
+        <FormField v-if="hasPlatforms(form.media_type)" label="运行 / 播放平台"><TagsInput v-model="form.platforms" /></FormField>
+        <FormField label="参与机构" description="保留机构在这一版本中的职责">
+          <div class="flex flex-col gap-2">
+            <div v-for="(item, index) in form.organizations" :key="index" class="grid grid-cols-[1fr_8rem_auto] gap-2">
+              <Input v-model="item.name" placeholder="机构" /><Input v-model="item.role" placeholder="职责" />
+              <Button variant="ghost" size="sm" type="button" @click="form.organizations.splice(index, 1)">×</Button>
+            </div>
+            <Button variant="soft" size="sm" type="button" class="self-start" @click="form.organizations.push({ name: '', role: '' })">＋ 添加机构</Button>
+          </div>
+        </FormField>
+        <FormField label="官方入口">
+          <div class="flex flex-col gap-2">
+            <div v-for="(item, index) in form.official_links" :key="index" class="grid grid-cols-[8rem_1fr_auto] gap-2">
+              <Input v-model="item.label" placeholder="名称" /><Input v-model="item.url" placeholder="https://" />
+              <Button variant="ghost" size="sm" type="button" @click="form.official_links.splice(index, 1)">×</Button>
+            </div>
+            <Button variant="soft" size="sm" type="button" class="self-start" @click="form.official_links.push({ label: '', url: '' })">＋ 添加入口</Button>
+          </div>
+        </FormField>
+      </div>
+    </details>
+
+    <FormField label="本地资源" description="程序、文件或文件夹的本机路径；当前先保存位置，不会自动执行">
+      <Input
+        v-model="form.local_path"
+        placeholder="例如 D:\\Library\\作品名 或游戏程序路径"
+        class="font-mono"
+      />
     </FormField>
 
     <FormField label="作者与角色" description="一行一位;名字打错了去作者那一页改">

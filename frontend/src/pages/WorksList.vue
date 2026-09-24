@@ -43,7 +43,17 @@ const byType = computed(() => mediaType.value !== "");
 /** 现在画的是哪一份列表(两份里只有一份在);页头计数、翻页、那句「拼写相近」都读它。 */
 const list = computed(() => works.value ?? carriers.value);
 
-const sortOptions = [...WORK_SORTS];
+/** 有关键词时默认档实际是「相关度优先、标题消歧」,界面必须把这件事说准。 */
+const sortOptions = computed(() =>
+  WORK_SORTS.map((option) => ({
+    ...option,
+    label: keyword.value
+      ? option.value === "title"
+        ? "按相关"
+        : "相关内按时间"
+      : option.label,
+  })),
+);
 
 const listTitle = computed(() => (byType.value ? labelOf(mediaType.value) : "全部作品"));
 

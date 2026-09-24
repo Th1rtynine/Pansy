@@ -7,6 +7,7 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -20,7 +21,9 @@ from app.api import API_ROUTERS
 from app.config import load_paths
 from app.db import init_db
 
-DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+DIST = Path(
+    os.environ.get("PANSY_STATIC_DIR", Path(__file__).resolve().parent.parent / "frontend" / "dist")
+).resolve()
 INDEX = DIST / "index.html"
 
 #: 没有构建产物时说的话 —— 不报一个空白的 404,免得让人以为后端坏了。

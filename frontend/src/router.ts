@@ -79,6 +79,12 @@ export const router = createRouter({
     { path: "/tags/:id", name: "tag", component: () => import("./pages/TagDetail.vue") },
     { path: "/tags/:id/edit", name: "tag-edit", meta: TASK, component: () => import("./pages/TagForm.vue") },
 
+    /**
+     * 设置:外部数据源的凭据与账号连接。**不是 `meta: TASK`** ——
+     * 它不是一个「填写中」的表单,而是一页要跟别处并排看的配置,浏览用的入口不必收起来。
+     */
+    { path: "/settings", name: "settings", component: () => import("./pages/Settings.vue") },
+
     {
       path: "/:rest(.*)*",
       name: "missing",

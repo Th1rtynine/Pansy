@@ -27,7 +27,7 @@ const route = useRoute();
 const router = useRouter();
 const volumeId = computed(() => Number(route.params.id));
 
-const form = ref<VolumeIn>({ volume_number: null, title: "", summary: "" });
+const form = ref<VolumeIn>({ volume_number: null, title: "", summary: "", published_on: "" });
 const error = ref("");
 const saving = ref(false);
 
@@ -42,6 +42,11 @@ watch(data, (loaded) => {
     volume_number: loaded.volume_number,
     title: loaded.title ?? "",
     summary: loaded.summary ?? "",
+    published_on: loaded.published_on ?? "",
+    catalog_code: loaded.catalog_code ?? "",
+    page_count: loaded.page_count,
+    volume_type: loaded.volume_type ?? "",
+    local_path: loaded.local_path ?? "",
   };
 });
 
@@ -142,6 +147,11 @@ async function dropCover() {
       <FormField label="名字">
         <Input v-model="form.title" />
       </FormField>
+      <FormField label="发售日期"><Input v-model="form.published_on" /></FormField>
+      <FormField label="ISBN / 编号"><Input v-model="form.catalog_code" /></FormField>
+      <FormField label="页数"><NumberInput v-model="form.page_count" :min="0" /></FormField>
+      <FormField label="分卷类型"><Input v-model="form.volume_type" /></FormField>
+      <FormField label="本地资源"><Input v-model="form.local_path" class="font-mono" /></FormField>
     </FormSection>
 
     <FormSection title="说了什么">

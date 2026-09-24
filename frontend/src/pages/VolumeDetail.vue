@@ -39,6 +39,11 @@ const panelRows = computed(() => {
   return [
     { label: "序号", value: loaded.volume.volume_number === null ? "—" : label.value },
     { label: "所属作品", value: `《${loaded.edition.work_title}》 · ${loaded.edition.media_label}` },
+    { label: "发售日期", value: loaded.volume.published_on || "—" },
+    { label: "ISBN / 编号", value: loaded.volume.catalog_code || "—" },
+    { label: "页数", value: loaded.volume.page_count == null ? "—" : `${loaded.volume.page_count} 页` },
+    { label: "类型", value: loaded.volume.volume_type || "—" },
+    { label: "本地资源", value: loaded.volume.local_path || "—" },
   ];
 });
 </script>

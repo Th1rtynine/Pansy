@@ -16,10 +16,30 @@ PREFIXES = {
     "bangumi": "bangumi",
     "chii": "bangumi",
     "vndb": "vndb",
+    "hkng": "hikarinagi",
+    "hikari": "hikarinagi",
+    "hikarinagi": "hikarinagi",
 }
 
 # id 的写法:`站名:编号`,编号前面可以带一两个字母(VNDB 的是 v4)。
 _ASK = re.compile(r"^(?P<prefix>[A-Za-z]+)\s*[:：]\s*(?P<body>[A-Za-z]{0,3}\d{1,10})$")
+# Hikarinagi 的条目分三类、各有自己的编号,所以要多一层:`hkng:manga:5`(类型省略时按 galgame)。
+# **这一条要在 `_ASK` 之前判** —— `_ASK` 的 `[A-Za-z]{0,3}\d{1,10}` 只吃「字母 + 数字」,吃不下中间那个冒号。
+_ASK_TYPED = re.compile(
+    r"^(?P<prefix>[A-Za-z]+)\s*[:：]\s*(?P<kind>galgame|light[_-]?novel|manga|game|novel)"
+    r"\s*[:：]\s*(?P<body>\d{1,10})$",
+    re.IGNORECASE,
+)
+#: `hkng:manga:5` 里那个类型词 → Hikarinagi 自己的类型名(`app/sources/hikarinagi.py` 的 `TYPE_MEDIA`)。
+_TYPED_KINDS = {
+    "galgame": "galgame",
+    "game": "galgame",
+    "novel": "light_novel",
+    "lightnovel": "light_novel",
+    "light_novel": "light_novel",
+    "light-novel": "light_novel",
+    "manga": "manga",
+}
 _BANGUMI_URL = re.compile(
     r"^https?://(?:www\.)?(?:bgm\.tv|bangumi\.tv|chii\.in)/subject/(?P<id>\d+)(?:[/?#].*)?$",
     re.IGNORECASE,
@@ -54,6 +74,16 @@ def parse(text: str) -> Ask:
     linked = _BANGUMI_URL.match(raw)
     if linked:
         return Ask(source="bangumi", external_id=linked.group("id"))
+
+    # `hkng:manga:5` —— 带类型那种。它的 `external_id` 把类型带上(`manga:5`),因为三类条目
+    # 各在自己的端点下,不带类型就没法按编号去问。
+    typed = _ASK_TYPED.match(raw)
+    if typed:
+        source = PREFIXES.get(typed.group("prefix").lower())
+        if source == "hikarinagi":
+            kind = _TYPED_KINDS[typed.group("kind").lower().replace("-", "").replace("_", "")]
+            return Ask(source=source, external_id=f"{kind}:{typed.group('body')}")
+
     found = _ASK.match(raw)
     if found:
         source = PREFIXES.get(found.group("prefix").lower())

@@ -39,7 +39,11 @@ def create_volumes(edition_id: int, body: list[VolumeIn]) -> VolumesAddedOut:
             session,
             edition.id,
             [
-                (item.volume_number, item.title.strip() or None, item.published_on.strip() or None)
+                (
+                    item.volume_number, item.title.strip() or None, item.published_on.strip() or None,
+                    item.summary.strip() or None, item.catalog_code.strip() or None, item.page_count,
+                    item.volume_type.strip() or None, item.local_path.strip() or None,
+                )
                 for item in body
             ],
         )
@@ -77,6 +81,10 @@ def update_volume(volume_id: int, body: VolumeIn) -> VolumeOut:
         volume.title = body.title.strip() or None
         volume.summary = body.summary.strip() or None
         volume.published_on = body.published_on.strip() or None
+        volume.catalog_code = body.catalog_code.strip() or None
+        volume.page_count = body.page_count
+        volume.volume_type = body.volume_type.strip() or None
+        volume.path = body.local_path.strip() or None
         answer = volume_out(volume)
 
     return answer

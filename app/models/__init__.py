@@ -13,7 +13,10 @@ from app.models.edition_tag import EditionTag
 from app.models.external_ref import ExternalRef
 from app.models.tag import Tag
 from app.models.volume import Volume
+from app.models.volume_external_ref import VolumeExternalRef
 from app.models.work import Work
+from app.models.work_external_ref import WorkExternalRef
+from app.models.work_relation import WorkRelation
 
 __all__ = [
     "Base",
@@ -25,5 +28,8 @@ __all__ = [
     "ExternalRef",
     "Tag",
     "Volume",
+    "VolumeExternalRef",
     "Work",
+    "WorkExternalRef",
+    "WorkRelation",
 ]

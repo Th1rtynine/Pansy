@@ -149,10 +149,24 @@ function emptyCarrier(): EditionIn {
     media_type: "manga",
     title: "",
     published_on: "",
+    ended_on: "",
+    subtype: "",
+    region: "",
+    language: "",
+    catalog_code: "",
+    homepage: "",
+    engine: "",
+    audience: "",
+    reading_mode: "",
+    content_notice: "",
+    platforms: [],
+    organizations: [],
+    official_links: [],
     summary: "",
     org: "",
     release_status: "",
     volume_count: null,
+    local_path: "",
     creators: [],
     tags: [],
   };
@@ -185,10 +199,24 @@ watch(data, (loaded) => {
       media_type: loaded.media_type,
       title: loaded.title ?? "",
       published_on: loaded.published_on ?? "",
+      ended_on: loaded.ended_on ?? "",
       summary: loaded.summary ?? "",
       org: loaded.org ?? "",
       release_status: loaded.release_status ?? "",
       volume_count: loaded.volume_count,
+      local_path: loaded.local_path ?? "",
+      subtype: loaded.subtype ?? "",
+      region: loaded.region ?? "",
+      language: loaded.language ?? "",
+      catalog_code: loaded.catalog_code ?? "",
+      homepage: loaded.homepage ?? "",
+      engine: loaded.engine ?? "",
+      audience: loaded.audience ?? "",
+      reading_mode: loaded.reading_mode ?? "",
+      content_notice: loaded.content_notice ?? "",
+      platforms: [...loaded.platforms],
+      organizations: loaded.organizations.map((item) => ({ ...item })),
+      official_links: loaded.official_links.map((item) => ({ ...item })),
       creators: loaded.creators.map((creator) => ({ name: creator.name, role: creator.role })),
       tags: loaded.tags.map((tag) => tag.name),
     };
@@ -482,7 +510,7 @@ async function look(text: string) {
   prefillNote.value = "";
   try {
     const answer = await sources.collect(keyword);
-    found.value = answer.candidates;
+    found.value = answer.candidates.filter((item) => (item.match_score ?? 1) > 0);
     if (answer.resolved) {
       // 贴的是编号:直接取回来填上,并记下这条编号。
       await takeFromSource({
@@ -491,8 +519,10 @@ async function look(text: string) {
           { source: answer.resolved.source, external_id: answer.resolved.external_id },
         ]),
       });
-    } else if (!answer.candidates.length) {
-      prefillNote.value = `两个源里都没搜到「${keyword}」。`;
+    } else if (!found.value.length) {
+      prefillNote.value = answer.candidates.length
+        ? `来源返回了一些结果，但没有与「${keyword}」足够接近的条目。`
+        : `所有来源都没搜到「${keyword}」。`;
     }
   } catch (failure) {
     error.value = messageOf(failure);

@@ -1,13 +1,38 @@
 data/
 config.toml
+.env
+.env.*
+!.env.example
 # 迁移前的快照。data/ 里只放库本身(pansy.db 与 covers/),快照放这儿。
 backups/
 .venv/
 __pycache__/
 *.pyc
+*.log
+*.dmp
+*.pdb
+*.db
+*.sqlite
+*.sqlite3
+*.exe
+*.msi
+# 本机跑脚本时的临时目录。
+.tmp/
+
+# 编辑器与操作系统产生的本机文件。
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
 
 # 前端:依赖与构建产物都不进仓库(装一次就有,构建一次就有)。
 # .npm-cache 是本机把 npm 的缓存指到工作目录里留下的,同样不进。
 frontend/node_modules/
 frontend/dist/
 .npm-cache/
+
+# 桌面构建产物：Python sidecar、Rust 编译目录与安装包都可重新生成。
+desktop/build/
+frontend/src-tauri/target/
+frontend/src-tauri/binaries/*.exe
+frontend/src-tauri/binaries/*-pc-windows-msvc

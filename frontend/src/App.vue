@@ -45,6 +45,9 @@ const currentType = computed(() => (route.path === "/works" ? mediaType.value : 
  */
 const onAllWorks = computed(() => route.path === "/works" && mediaType.value === "");
 
+/** 是不是在设置那一页。那枚齿轮据此整圈亮起来,与导航里「主页」的标法一致。 */
+const onSettings = computed(() => route.path === "/settings");
+
 /**
  * 是不是「正在加东西 / 正在改东西」的那一页(看 router.ts 里那几个 `meta: TASK`)。那几页上把浏览用的
  * 入口收起来(类型导航、底部导航、站内搜索、加号),它们会把人带离正在填写的内容;站名与外观保留。
@@ -221,7 +224,7 @@ onUnmounted(() => {
                 aria-controls="appearance"
                 aria-label="外观:明暗与主色"
                 title="外观"
-                class="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-line text-muted transition-colors hover:bg-state-hover hover:text-fg active:bg-state-press"
+                class="inline-flex size-9 shrink-0 items-center justify-center rounded-control border-2 border-line text-muted transition-colors hover:bg-state-hover hover:text-fg active:bg-state-press"
                 @click="togglePanel('appearance')"
               >
                 <svg
@@ -359,8 +362,41 @@ onUnmounted(() => {
             </div>
 
             <!--
-              加入作品那一格:直通加入页,不再收在窗格后面 —— 谁打开都能加、能改,顶栏右边就三枚一样大的图标
-              (搜索、外观、加号)。**加 / 改的页面上也照常摆出来**:不摆的话进了编辑页右上角什么都没有,只能猜自己是不是跑错了地方。
+              设置:一枚齿轮,直接是链接(不是面板)—— 只有一页,中间再夹一层面板就是白让一次点击。
+              与外观那枚同一个盒子尺寸与边框,当前在那一页时整圈亮起来,标法与导航里「主页」一致。
+            -->
+            <RouterLink
+              to="/settings"
+              :aria-current="onSettings ? 'page' : undefined"
+              aria-label="设置"
+              title="设置"
+              :class="[
+                'inline-flex size-9 shrink-0 items-center justify-center rounded-control border-2 transition-colors',
+                onSettings
+                  ? 'border-mark text-mark-text'
+                  : 'border-line text-muted hover:bg-state-hover hover:text-fg',
+              ]"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="size-[18px]"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="3.1" />
+                <path
+                  d="M19.4 14.4a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1.37Z"
+                />
+              </svg>
+            </RouterLink>
+
+            <!--
+              加入作品那一格:直通加入页,不再收在窗格后面 —— 谁打开都能加、能改,顶栏右边是四枚一样大的图标
+              (搜索、外观、设置和加号)。**加 / 改的页面上也照常摆出来**:不摆的话进了编辑页右上角什么都没有,只能猜自己是不是跑错了地方。
             -->
             <RouterLink
               to="/works/new"
@@ -408,7 +444,8 @@ onUnmounted(() => {
 
 
     <!-- 右下角那两枚:**「回到上一页」在上面,「回到顶部」在下面**(见各自的文件) -->
-    <BackToPrevious />
+    <!-- 设置是顶层入口,所以这一页不显示悬浮返回键:窄屏上它会压住凭据输入框。 -->
+    <BackToPrevious v-if="!onSettings" />
     <BackToTop />
 
     <!--
