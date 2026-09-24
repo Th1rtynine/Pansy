@@ -1,7 +1,7 @@
 """Pansy 桌面版的 Python sidecar 入口。
 
 网页开发仍使用项目根目录的 ``config.toml``；只有这个入口会把运行数据放进
-``%LOCALAPPDATA%\\Pansy``。它必须在导入 ``app.main`` 以前写好环境变量，因为
+``%LOCALAPPDATA%\\PansyData``。它必须在导入 ``app.main`` 以前写好环境变量，因为
 数据库、封面目录与静态页面都会在应用初始化时读取它们。
 """
 
@@ -12,6 +12,7 @@ import ctypes
 import json
 import os
 from pathlib import Path
+import shutil
 import socket
 import sys
 import tempfile
@@ -24,8 +25,65 @@ def _app_data_dir() -> Path:
     if sys.platform == "win32":
         root = os.environ.get("LOCALAPPDATA")
         if root:
-            return Path(root) / "Pansy"
+            return Path(root) / "PansyData"
     return Path.home() / ".local" / "share" / "Pansy"
+
+
+def _legacy_app_data_dir() -> Path | None:
+    """Return the preview build's data location, which was also its install directory."""
+    if sys.platform != "win32":
+        return None
+    root = os.environ.get("LOCALAPPDATA")
+    return Path(root) / "Pansy" if root else None
+
+
+def _copy_legacy_item(source: Path, destination: Path) -> bool:
+    """Copy one legacy item without ever replacing a destination the user already has."""
+    if destination.exists() or not source.exists():
+        return False
+    temporary = destination.parent / f".{destination.name}.migrating-{os.getpid()}"
+    if temporary.exists():
+        if temporary.is_dir():
+            shutil.rmtree(temporary)
+        else:
+            temporary.unlink()
+    try:
+        if source.is_dir():
+            shutil.copytree(source, temporary)
+        else:
+            shutil.copy2(source, temporary)
+        # The migration only runs for the Windows desktop build. ``rename``
+        # refuses to replace an existing destination there, so two concurrent
+        # launches cannot overwrite data created by the other process.
+        try:
+            temporary.rename(destination)
+        except FileExistsError:
+            if temporary.is_dir():
+                shutil.rmtree(temporary, ignore_errors=True)
+            else:
+                temporary.unlink(missing_ok=True)
+            return False
+    except BaseException:
+        if temporary.exists():
+            if temporary.is_dir():
+                shutil.rmtree(temporary, ignore_errors=True)
+            else:
+                temporary.unlink(missing_ok=True)
+        raise
+    return True
+
+
+def _migrate_legacy_data(target: Path) -> list[str]:
+    """Copy preview-build data out of the installer directory on the first new launch."""
+    legacy = _legacy_app_data_dir()
+    if legacy is None or not legacy.is_dir() or legacy.resolve() == target.resolve():
+        return []
+    target.mkdir(parents=True, exist_ok=True)
+    copied: list[str] = []
+    for name in ("config.toml", "data"):
+        if _copy_legacy_item(legacy / name, target / name):
+            copied.append(name)
+    return copied
 
 
 def _bundle_root() -> Path:
@@ -94,6 +152,8 @@ def main() -> None:
     args = parser.parse_args()
 
     app_data = (args.app_data or _app_data_dir()).resolve()
+    if args.app_data is None:
+        _migrate_legacy_data(app_data)
     bundle_root = _bundle_root()
     if str(bundle_root) not in sys.path:
         sys.path.insert(0, str(bundle_root))

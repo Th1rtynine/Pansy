@@ -16,14 +16,14 @@ if (Test-Path $CargoBin) {
 }
 
 if (-not (Test-Path $Python)) {
-    throw "找不到项目虚拟环境：$Python"
+    throw "Project virtual environment not found: $Python"
 }
 
 Push-Location $FrontendRoot
 try {
     npm run build
     if ($LASTEXITCODE -ne 0) {
-        throw "Vue 前端构建失败（退出码 $LASTEXITCODE）"
+        throw "Vue frontend build failed (exit code $LASTEXITCODE)"
     }
 } finally {
     Pop-Location
@@ -34,7 +34,7 @@ try {
     --workpath (Join-Path $ProjectRoot "desktop\build\work") `
     (Join-Path $ProjectRoot "desktop\pansy-server.spec")
 if ($LASTEXITCODE -ne 0) {
-    throw "Python sidecar 构建失败（退出码 $LASTEXITCODE）"
+    throw "Python sidecar build failed (exit code $LASTEXITCODE)"
 }
 
 New-Item -ItemType Directory -Force (Split-Path -Parent $SidecarTarget) | Out-Null
@@ -44,8 +44,8 @@ Push-Location $FrontendRoot
 try {
     $PreviousCargoTargetDir = $env:CARGO_TARGET_DIR
     $env:CARGO_TARGET_DIR = $CargoTargetDir
-    # Tauri 第一次打 NSIS 时会从 GitHub 取一次安装器工具。网络偶发 global timeout
-    # 不应让整轮前端与 Python 构建作废；已经下载好的部分会进入本机 Tauri 缓存，重试即可续用。
+    # Tauri downloads NSIS tooling on the first build. A transient global timeout
+    # should not invalidate the completed frontend and sidecar builds, so retry here.
     $MaxAttempts = 3
     for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
         npm run tauri build
@@ -53,9 +53,9 @@ try {
             break
         }
         if ($Attempt -eq $MaxAttempts) {
-            throw "Tauri/NSIS 构建连续失败 $MaxAttempts 次（最后退出码 $LASTEXITCODE）"
+            throw "Tauri/NSIS build failed $MaxAttempts times (last exit code $LASTEXITCODE)"
         }
-        Write-Warning "Tauri/NSIS 构建失败，5 秒后自动重试（$Attempt/$MaxAttempts）……"
+        Write-Warning "Tauri/NSIS build failed; retrying in 5 seconds ($Attempt/$MaxAttempts)..."
         Start-Sleep -Seconds 5
     }
 } finally {

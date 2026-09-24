@@ -87,7 +87,7 @@ flowchart LR
 
 ## 数据属于用户
 
-Pansy 的数据库、封面、来源凭据和登录会话只保存在本机，不会进入 Git 仓库。当前预览版使用 `%LOCALAPPDATA%\Pansy` 作为安装版的数据位置；源码运行使用项目根目录中的 `config.toml` 与 `data/`。
+Pansy 的数据库、封面、来源凭据和登录会话只保存在本机，不会进入 Git 仓库。安装版使用 `%LOCALAPPDATA%\PansyData` 保存个人资料，与程序安装目录分开；源码运行使用项目根目录中的 `config.toml` 与 `data/`。
 
 ```text
 data/

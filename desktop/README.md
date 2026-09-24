@@ -26,10 +26,10 @@ PyInstaller 单文件程序会派生实际运行 API 的子进程。sidecar 会�
 
 ## 数据位置
 
-安装版当前使用 `%LOCALAPPDATA%\Pansy`：
+安装版使用独立的 `%LOCALAPPDATA%\PansyData`：
 
 ```text
-Pansy/
+PansyData/
 ├── config.toml
 └── data/
     ├── pansy.db
@@ -37,7 +37,7 @@ Pansy/
     └── settings.json
 ```
 
-源码运行仍读取项目根目录下的 `config.toml` 与 `data/`，不会覆盖安装版资料。正式公开发布前应将用户资料迁移到独立于程序安装目录的位置，确保卸载和覆盖安装不会误删个人书架。
+源码运行仍读取项目根目录下的 `config.toml` 与 `data/`，不会覆盖安装版资料。早期预览构建曾把资料放在 `%LOCALAPPDATA%\Pansy`；新版首次启动时会把其中的 `config.toml` 与 `data/` 安全复制到新位置，且不会覆盖新位置已经存在的内容。
 
 ## 生成安装包
 
